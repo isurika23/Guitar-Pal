@@ -50,7 +50,3 @@ MIT License
 <img src="https://knowtechie.com/wp-content/uploads/2019/06/4-crowdfunding-products-fret-zealot-guitar-teaching-device.jpg" alt="Reference Product" width="400"/>
 
 *Image used for illustrative purposes only. All rights belong to the original manufacturer or creator.*
-
----
-
-> _This is a research-fhttps://knowtechie.com/wp-content/uploads/2019/06/4-crowdfunding-products-fret-zealot-guitar-teaching-device.jpgocused prototype aimed at improving beginner engagement and accuracy in guitar practice. Contributions, feedback, and collaboration are welcome!_
