@@ -31,9 +31,9 @@ To create a low-cost, extendable guitar learning tool that:
 | Week(s) | Milestone                                                                 |
 |---------|---------------------------------------------------------------------------|
 | **Week 1–2** | 🔧 Research & Requirements Finalization <br>• Component sourcing (ESP32, LEDs, sensors) <br>• Confirm fretboard layout and hardware design |
-| **Week 3–4** | 💡 Hardware Prototyping <br>• LED control with ESP32 <br>• Basic touch sensor testing |
+| **Week 3–4** | 💡 Hardware Prototyping <br>• LED control with ESP32 |
 | **Week 5–6** | 🔌 Bluetooth Communication <br>• Set up BLE with ESP32 <br>• Mobile app connects to hardware <br>• Test sending commands from app  <br>• Breadboard layout & power setupto light LEDs |
-| **Week 7–8** | 📱 Mobile App Core Features <br>• Flutter UI for chord/note selection <br>• Integrate with BLE logic <br>• Touch sensor feedback shown on app |
+| **Week 7–8** | 📱 Mobile App Core Features <br>• Flutter UI for chord/note selection <br>• Integrate with BLE logic <br>• Basic touch sensor testing <br>• Touch sensor feedback shown on app |
 | **Week 9–10** | 🧪 Integration & Testing <br>• Full system testing (LED + touch + app) <br>• Debug interaction delays & UI bugs <br>• Fine-tune fretboard response |
 | **Week 11–12** | ✅ Finalization & Polish <br>• Refactor code & optimize power usage <br>• Document system and app <br>• Prepare for presentation/demo <br>• Buffer time for unexpected issues |
 
