@@ -4,99 +4,173 @@ void main() {
   runApp(MyApp());
 }
 
-/// Root widget of the app
+/// AppPage enum to track which page is showing
+enum AppPage { home, tutor, tuner, profile, scalePractice, chordPractice }
+
 class MyApp extends StatefulWidget {
   @override
   State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
-  int _currentIndex = 0; // keeps track of which bottom nav tab is selected
-  bool _connected = false; // connection status (controls the top dot color)
-
-  // List of pages for bottom navigation
-  final List<Widget> _pages = [
-    HomePage(), // Page 0
-    ChordPracticePage(), // Page 1
-    Center(child: Text("Tuner Page")), // Page 2
-    Center(child: Text("Profile Page")), // Page 3
-  ];
+  AppPage _currentPage = AppPage.home;
+  bool _connected = false; // state for connect button circle
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-        body: Column(
-          children: [
-            // ------------------ Top bar with "Connect to Device" ------------------
-            SafeArea(
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300], // light background
-                        borderRadius: BorderRadius.circular(20), // rounded pill
+      home: WillPopScope(
+        // Handle Android back button
+        onWillPop: () async {
+          if (_currentPage == AppPage.scalePractice ||
+              _currentPage == AppPage.chordPractice) {
+            // If in a practice page → go back to Tutor instead of closing app
+            setState(() => _currentPage = AppPage.tutor);
+            return false;
+          }
+          return true; // default behavior (exit app if at root)
+        },
+        child: Scaffold(
+          body: Column(
+            children: [
+              // ---------------- top bar ----------------
+              SafeArea(
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.circle,
+                              size: 12,
+                              color: _connected ? Colors.green : Colors.red,
+                            ),
+                            SizedBox(width: 6),
+                            Text("Connect to Device"),
+                          ],
+                        ),
                       ),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      child: Row(
-                        children: [
-                          // Circle changes color depending on _connected
-                          Icon(
-                            Icons.circle,
-                            size: 12,
-                            color: _connected ? Colors.green : Colors.red,
-                          ),
-                          SizedBox(width: 6),
-                          Text(_connected ? "Connected" : "Connect to Device"),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            // ------------------ Page content (scrollable middle part) ------------------
-            Expanded(child: _pages[_currentIndex]),
-          ],
-        ),
+              // ---------------- main content ----------------
+              Expanded(child: _buildPage()),
+            ],
+          ),
 
-        // ------------------ Bottom navigation bar ------------------
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) {
-            setState(() {
-              // print('Selected index: $index');
-              _currentIndex = index; // switch tab
-            });
-          },
-          selectedItemColor: Colors.green,
-          unselectedItemColor: Colors.black,
-          backgroundColor: Colors.white,
-          type: BottomNavigationBarType.fixed,
-          items: [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-            BottomNavigationBarItem(icon: Icon(Icons.school), label: "Tutor"),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.music_note),
-              label: "Tuner",
-            ),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-          ],
+          // ---------------- bottom navigation ----------------
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: _navIndexForPage(_currentPage),
+            onTap: (index) {
+              setState(() {
+                _currentPage = _pageForNavIndex(index);
+              });
+            },
+            selectedItemColor: Colors.green,
+            unselectedItemColor: Colors.grey,
+            backgroundColor: Colors.white,
+            type: BottomNavigationBarType.fixed,
+            items: [
+              BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+              BottomNavigationBarItem(icon: Icon(Icons.school), label: "Tutor"),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.music_note),
+                label: "Tuner",
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person),
+                label: "Profile",
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+
+  /// Map current page → visible widget
+  Widget _buildPage() {
+    switch (_currentPage) {
+      case AppPage.home:
+        return HomePage(
+          onScalePressed: () {
+            setState(() => _currentPage = AppPage.scalePractice);
+          },
+          onChordPressed: () {
+            setState(() => _currentPage = AppPage.chordPractice);
+          },
+        );
+      case AppPage.tutor:
+        return TutorPage();
+      case AppPage.tuner:
+        return Center(child: Text("Tuner Page"));
+      case AppPage.profile:
+        return Center(child: Text("Profile Page"));
+      case AppPage.scalePractice:
+        return ScalePracticePage();
+      case AppPage.chordPractice:
+        return ChordPracticePage();
+    }
+  }
+
+  /// Map nav index → AppPage
+  AppPage _pageForNavIndex(int index) {
+    switch (index) {
+      case 0:
+        return AppPage.home;
+      case 1:
+        return AppPage.tutor;
+      case 2:
+        return AppPage.tuner;
+      case 3:
+        return AppPage.profile;
+      default:
+        return AppPage.home;
+    }
+  }
+
+  /// Map AppPage → nav index
+  /// (Tutor is selected for both ScalePractice & ChordPractice)
+  int _navIndexForPage(AppPage page) {
+    switch (page) {
+      case AppPage.home:
+        return 0;
+      case AppPage.tutor:
+      case AppPage.scalePractice:
+      case AppPage.chordPractice:
+        return 1;
+      case AppPage.tuner:
+        return 2;
+      case AppPage.profile:
+        return 3;
+    }
+  }
 }
 
-/// ------------------ Home Page ------------------
+/// ---------------- Home Page ----------------
 class HomePage extends StatelessWidget {
+  final VoidCallback onScalePressed;
+  final VoidCallback onChordPressed;
+
+  const HomePage({
+    required this.onScalePressed,
+    required this.onChordPressed,
+    Key? key,
+  }) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -122,13 +196,13 @@ class HomePage extends StatelessWidget {
                 backgroundColor: Colors.green,
                 minimumSize: Size(double.infinity, 80), // full width
               ),
-              onPressed: () {},
+              onPressed: onScalePressed,
               child: Text(
                 "Scale Practice",
                 style: TextStyle(
+                  color: const Color.fromARGB(234, 255, 255, 255),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: const Color.fromARGB(234, 255, 255, 255),
                 ),
               ),
             ),
@@ -140,25 +214,19 @@ class HomePage extends StatelessWidget {
                 backgroundColor: Colors.black,
                 minimumSize: Size(double.infinity, 80),
               ),
-              onPressed: () {
-                // navigate to chord practice page
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ChordPracticePage()),
-                );
-              },
+              onPressed: onChordPressed,
               child: Text(
-                "Chords Practice",
+                "Chord Practice",
                 style: TextStyle(
+                  color: const Color.fromARGB(234, 255, 255, 255),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: const Color.fromARGB(234, 255, 255, 255),
                 ),
               ),
             ),
             SizedBox(height: 16),
 
-            // Songs button
+            // Songs placeholder
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
@@ -181,7 +249,7 @@ class HomePage extends StatelessWidget {
   }
 }
 
-/// ------------------ Tutor Page Placeholder ------------------
+/// ---------------- Tutor Page ----------------
 class TutorPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -193,6 +261,14 @@ class TutorPage extends StatelessWidget {
 class ChordPracticePage extends StatefulWidget {
   @override
   _ChordPracticePageState createState() => _ChordPracticePageState();
+}
+
+/// ---------------- Scale Practice Page ----------------
+class ScalePracticePage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(child: Text("Scale Practice Page"));
+  }
 }
 
 class _ChordPracticePageState extends State<ChordPracticePage> {
