@@ -1,156 +1,299 @@
-// lib/main.dart
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:provider/provider.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  int _currentIndex = 0;
+  bool _connected = false;
+
+  final List<Widget> _pages = [
+    HomePage(),
+    TutorPage(),
+    Center(child: Text("Tuner Page")),
+    Center(child: Text("Profile Page")),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ESP32 BLE Connector',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
+      home: Scaffold(
+        body: Column(
+          children: [
+            // Top bar
+            SafeArea(
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.circle,
+                            size: 12,
+                            color: _connected ? Colors.green : Colors.red,
+                          ),
+                          SizedBox(width: 6),
+                          Text("Connect to Device"),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Page content
+            Expanded(child: _pages[_currentIndex]),
+          ],
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          items: [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+            BottomNavigationBarItem(icon: Icon(Icons.school), label: "Tutor"),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.music_note),
+              label: "Tuner",
+            ),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+          ],
+        ),
       ),
-      home: const MyHomePage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
-
+class HomePage extends StatelessWidget {
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        children: [
+          SizedBox(height: 20),
+          Text(
+            "Welcome Isurika!",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              minimumSize: Size(double.infinity, 80),
+            ),
+            onPressed: () {},
+            child: Text(
+              "Scale Practice",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+          SizedBox(height: 16),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              minimumSize: Size(double.infinity, 80),
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ChordPracticePage()),
+              );
+            },
+            child: Text(
+              "Chords Practice",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          SizedBox(height: 16),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              minimumSize: Size(double.infinity, 80),
+            ),
+            onPressed: () {},
+            child: Text(
+              "Songs",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  BluetoothDevice? connectedDevice;
-  BluetoothCharacteristic? targetCharacteristic;
-  String connectionStatus = 'Disconnected';
-  Timer? _sendTimer;
-
-  final String serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
-  final String characteristicUUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
-
-  Future<void> _connectToESP32() async {
-    // Check if Bluetooth is on
-    bool isBluetoothOn = await FlutterBluePlus.adapterState
-        .firstWhere((state) => state == BluetoothAdapterState.on)
-        .then((state) => true)
-        .catchError((e) => false);
-    if (!isBluetoothOn) {
-      setState(() {
-        connectionStatus = 'Bluetooth is off';
-      });
-      return;
-    }
-
-    // Start scanning for devices advertising the service UUID
-    await FlutterBluePlus.startScan(
-      timeout: const Duration(seconds: 10),
-      withServices: [Guid(serviceUUID)],
-    );
-
-    // Listen for scan results
-    StreamSubscription<List<ScanResult>>? scanSubscription;
-    scanSubscription = FlutterBluePlus.scanResults.listen((results) {
-      for (ScanResult result in results) {
-        if (result.device.platformName == 'ESP32_Isurika') { // Use platformName
-          FlutterBluePlus.stopScan();
-          _connectToDevice(result.device);
-          scanSubscription?.cancel();
-          return;
-        }
-      }
-    });
-
-    // Stop scanning after timeout if no device found
-    await Future.delayed(const Duration(seconds: 10));
-    await FlutterBluePlus.stopScan();
-    if (connectedDevice == null) {
-      setState(() {
-        connectionStatus = 'No ESP32 found';
-      });
-    }
-  }
-
-  Future<void> _connectToDevice(BluetoothDevice device) async {
-    try {
-      await device.connect();
-      setState(() {
-        connectedDevice = device;
-        connectionStatus = 'Connected';
-      });
-
-      // Discover services
-      List<BluetoothService> services = await device.discoverServices();
-      for (BluetoothService service in services) {
-        if (service.uuid.toString() == serviceUUID) {
-          for (BluetoothCharacteristic char in service.characteristics) {
-            if (char.uuid.toString() == characteristicUUID) {
-              targetCharacteristic = char;
-              _startSendingMessages();
-              return;
-            }
-          }
-        }
-      }
-      setState(() {
-        connectionStatus = 'Characteristic not found';
-      });
-    } catch (e) {
-      setState(() {
-        connectionStatus = 'Connection failed: $e';
-      });
-    }
-  }
-
-  void _startSendingMessages() {
-    _sendTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-      if (targetCharacteristic != null) {
-        try {
-          await targetCharacteristic!.write('hello esp32'.codeUnits);
-        } catch (e) {
-          setState(() {
-            connectionStatus = 'Write failed: $e';
-          });
-        }
-      }
-    });
-  }
-
+class TutorPage extends StatelessWidget {
   @override
-  void dispose() {
-    _sendTimer?.cancel();
-    connectedDevice?.disconnect();
-    super.dispose();
+  Widget build(BuildContext context) {
+    return Center(child: Text("Tutor Placeholder"));
   }
+}
+
+class ChordPracticePage extends StatefulWidget {
+  @override
+  _ChordPracticePageState createState() => _ChordPracticePageState();
+}
+
+class _ChordPracticePageState extends State<ChordPracticePage> {
+  String selectedNote = "C";
+  String chordType = "Major";
+  String showOption = "Finger position";
+
+  List<String> notes = [
+    "C",
+    "C#",
+    "D",
+    "D#",
+    "E",
+    "F",
+    "F#",
+    "G",
+    "G#",
+    "A",
+    "A#",
+    "B",
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ESP32 BLE Connector'),
-      ),
-      body: Center(
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(16),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text('Status: $connectionStatus'),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: connectionStatus == 'Connected' ? null : _connectToESP32,
-              child: const Text('Connect to ESP32'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Select a Chord",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
+            SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              children: notes.map((note) {
+                return ChoiceChip(
+                  label: Text(note),
+                  selected: selectedNote == note,
+                  onSelected: (_) {
+                    setState(() {
+                      selectedNote = note;
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+            SizedBox(height: 20),
+            Row(
+              children: [
+                Text("Type: "),
+                SizedBox(width: 10),
+                DropdownButton<String>(
+                  value: chordType,
+                  items: ["Major", "Minor"]
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      chordType = val!;
+                    });
+                  },
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Text("Show: "),
+                SizedBox(width: 10),
+                DropdownButton<String>(
+                  value: showOption,
+                  items: ["Finger position", "Intervals", "Notes"]
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      showOption = val!;
+                    });
+                  },
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+            Text(
+              "$selectedNote $chordType",
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            Text("C E G", style: TextStyle(fontSize: 18)),
+            SizedBox(height: 20),
+            FretboardWidget(),
           ],
         ),
       ),
+    );
+  }
+}
+
+class FretboardWidget extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // String names row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: ["E", "A", "D", "G", "B", "E"]
+              .map(
+                (s) => Text(s, style: TextStyle(fontWeight: FontWeight.bold)),
+              )
+              .toList(),
+        ),
+        SizedBox(height: 10),
+        // Example fretboard grid
+        Column(
+          children: List.generate(5, (fret) {
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: List.generate(6, (string) {
+                if (fret == 0) {
+                  // open string / muted string
+                  return Icon(Icons.circle, size: 16, color: Colors.grey);
+                } else if (fret == 1 && string == 1) {
+                  return Icon(Icons.circle, size: 20, color: Colors.red);
+                } else if (fret == 2 && string == 2) {
+                  return Icon(Icons.circle, size: 20, color: Colors.green);
+                } else if (fret == 3 && string == 3) {
+                  return Icon(Icons.circle, size: 20, color: Colors.blue);
+                }
+                return Container(width: 20, height: 20);
+              }),
+            );
+          }),
+        ),
+      ],
     );
   }
 }
