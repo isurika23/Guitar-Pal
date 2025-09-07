@@ -1,0 +1,176 @@
+{
+  "major": {
+    "c": {
+      "notes": ["C", "E", "G"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 3, 2, 0, 1, 0]
+    },
+    "c_sharp": {
+      "notes": ["C#", "F", "G#"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 4, 3, 1, 2, 1]
+    },
+    "d_flat": {
+      "notes": ["Db", "F", "Ab"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 4, 3, 1, 2, 1]
+    },
+    "d": {
+      "notes": ["D", "F#", "A"],
+      "no_strum": ["E_low", "A"],
+      "fret_num": [-1, -1, 0, 2, 3, 2]
+    },
+    "d_sharp": {
+      "notes": ["D#", "G", "A#"],
+      "no_strum": ["E_low", "A"],
+      "fret_num": [-1, -1, 1, 3, 4, 3]
+    },
+    "e_flat": {
+      "notes": ["Eb", "G", "Bb"],
+      "no_strum": ["E_low", "A"],
+      "fret_num": [-1, -1, 1, 3, 4, 3]
+    },
+    "e": {
+      "notes": ["E", "G#", "B"],
+      "no_strum": [],
+      "fret_num": [0, 2, 2, 1, 0, 0]
+    },
+    "f": {
+      "notes": ["F", "A", "C"],
+      "no_strum": [],
+      "fret_num": [1, 3, 3, 2, 1, 1]
+    },
+    "f_sharp": {
+      "notes": ["F#", "A#", "C#"],
+      "no_strum": [],
+      "fret_num": [2, 4, 4, 3, 2, 2]
+    },
+    "g_flat": {
+      "notes": ["Gb", "Bb", "Db"],
+      "no_strum": [],
+      "fret_num": [2, 4, 4, 3, 2, 2]
+    },
+    "g": {
+      "notes": ["G", "B", "D"],
+      "no_strum": [],
+      "fret_num": [3, 2, 0, 0, 0, 3]
+    },
+    "g_sharp": {
+      "notes": ["G#", "C", "D#"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 6, 5, 3, 4, 3]
+    },
+    "a_flat": {
+      "notes": ["Ab", "C", "Eb"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 6, 5, 3, 4, 3]
+    },
+    "a": {
+      "notes": ["A", "C#", "E"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 0, 2, 2, 2, 0]
+    },
+    "a_sharp": {
+      "notes": ["A#", "D", "F"],
+      "no_strum": ["E_low", "A"],
+      "fret_num": [-1, 1, 3, 3, 3, 1]
+    },
+    "b_flat": {
+      "notes": ["Bb", "D", "F"],
+      "no_strum": ["E_low", "A"],
+      "fret_num": [-1, 1, 3, 3, 3, 1]
+    },
+    "b": {
+      "notes": ["B", "D#", "F#"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 2, 4, 4, 4, 2]
+    }
+  },
+  "minor": {
+    "c": {
+      "notes": ["C", "Eb", "G"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 3, 1, 0, 1, 3]
+    },
+    "c_sharp": {
+      "notes": ["C#", "E", "G#"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 4, 2, 1, 2, 4]
+    },
+    "d_flat": {
+      "notes": ["Db", "E", "Ab"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 4, 2, 1, 2, 4]
+    },
+    "d": {
+      "notes": ["D", "F", "A"],
+      "no_strum": ["E_low", "A"],
+      "fret_num": [-1, -1, 0, 2, 3, 1]
+    },
+    "d_sharp": {
+      "notes": ["D#", "F#", "A#"],
+      "no_strum": ["E_low", "A"],
+      "fret_num": [-1, -1, 1, 3, 4, 2]
+    },
+    "e_flat": {
+      "notes": ["Eb", "Gb", "Bb"],
+      "no_strum": ["E_low", "A"],
+      "fret_num": [-1, -1, 1, 3, 4, 2]
+    },
+    "e": {
+      "notes": ["E", "G", "B"],
+      "no_strum": [],
+      "fret_num": [0, 2, 2, 0, 0, 0]
+    },
+    "f": {
+      "notes": ["F", "Ab", "C"],
+      "no_strum": [],
+      "fret_num": [1, 3, 3, 1, 1, 1]
+    },
+    "f_sharp": {
+      "notes": ["F#", "A", "C#"],
+      "no_strum": [],
+      "fret_num": [2, 4, 4, 2, 2, 2]
+    },
+    "g_flat": {
+      "notes": ["Gb", "A", "Db"],
+      "no_strum": [],
+      "fret_num": [2, 4, 4, 2, 2, 2]
+    },
+    "g": {
+      "notes": ["G", "Bb", "D"],
+      "no_strum": [],
+      "fret_num": [3, 5, 5, 3, 3, 3]
+    },
+    "g_sharp": {
+      "notes": ["G#", "B", "D#"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 6, 4, 3, 4, 4]
+    },
+    "a_flat": {
+      "notes": ["Ab", "B", "Eb"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 6, 4, 3, 4, 4]
+    },
+    "a": {
+      "notes": ["A", "C", "E"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 0, 2, 2, 1, 0]
+    },
+    "a_sharp": {
+      "notes": ["A#", "C#", "F"],
+      "no_strum": ["E_low", "A"],
+      "fret_num": [-1, 1, 3, 3, 2, 1]
+    },
+    "b_flat": {
+      "notes": ["Bb", "Db", "F"],
+      "no_strum": ["E_low", "A"],
+      "fret_num": [-1, 1, 3, 3, 2, 1]
+    },
+    "b": {
+      "notes": ["B", "D", "F#"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 2, 4, 4, 3, 2]
+    }
+  }
+}
