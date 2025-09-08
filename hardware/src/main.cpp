@@ -1,10 +1,11 @@
 #include <Arduino.h>
 #include <FastLED.h>
-#include <string>
-#include <vector>
-#include <map>
-#include <iostream>
+// #include <string>
+// #include <vector>
+// #include <map>
+// #include <iostream>
 #include "scale_and_chord_notes.h"
+#include "bluetooth.h"
 
 #define DATA_PIN 4
 #define NUM_LEDS 64 // 8x8 grid
@@ -94,12 +95,12 @@ std::vector<int> pixelCalculator(const std::vector<int> &chordNotes)
       ledPixelIndex += 6;
     }
   }
-  std::cout << "Pixels to light: ";
-  for (int pixel : pixels)
-  {
-    std::cout << pixel << " ";
-  }
-  std::cout << std::endl;
+  // std::cout << "Pixels to light: ";
+  // for (int pixel : pixels)
+  // {
+  //   std::cout << pixel << " ";
+  // }
+  // std::cout << std::endl;
   return pixels;
 }
 
@@ -110,6 +111,9 @@ void setup()
   Serial.begin(115200);
   setGridPixeltoFrets(); // Initialize the grid with valid LED positions
   Serial.println("Testing WS2812B 8x8 LED Grid (64 LEDs)");
+
+  // Initialize Bluetooth
+  setupBluetooth();
 }
 
 void loop()
