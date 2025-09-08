@@ -1,10 +1,14 @@
+// Import required packages for Flutter UI and Bluetooth functionality
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
+// Entry point of the application
 void main() {
   runApp(MyApp());
 }
 
-/// AppPage enum to track which page is showing
+/// Enum to track the current page in the app's navigation
 enum AppPage { home, tutor, tuner, profile, scalePractice, chordPractice }
 
 class MyApp extends StatefulWidget {
@@ -13,22 +17,160 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  // Track the current page displayed
   AppPage _currentPage = AppPage.home;
-  bool _connected = false; // state for connect button circle
+  // Track Bluetooth connection status for UI indicator
+  bool _connected = false;
+  // Track if connection attempt is in progress
+  bool _isConnecting = false;
+  // Store connection status message
+  String _connectionStatus = 'Disconnected';
+  // Store the connected Bluetooth device
+  BluetoothDevice? _connectedDevice;
+  // Store the target Bluetooth characteristic for communication
+  BluetoothCharacteristic? _targetCharacteristic;
+  // Timer for periodic message sending to ESP32
+  Timer? _sendTimer;
+
+  // UUIDs for the ESP32 service and characteristic
+  final String _serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+  final String _characteristicUUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+
+  /// Initiates connection to ESP32 device via Bluetooth Low Energy (BLE)
+  Future<void> _connectToESP32() async {
+    // Update UI to show connecting state
+    setState(() {
+      _isConnecting = true;
+      _connectionStatus = 'Connecting...';
+    });
+
+    // Check if Bluetooth adapter is on
+    bool isBluetoothOn = await FlutterBluePlus.adapterState
+        .firstWhere((state) => state == BluetoothAdapterState.on)
+        .then((state) => true)
+        .catchError((e) => false);
+    if (!isBluetoothOn) {
+      setState(() {
+        _connectionStatus = 'Bluetooth is off';
+        _connected = false;
+        _isConnecting = false;
+      });
+      return;
+    }
+
+    // Start scanning for devices advertising the specified service UUID
+    await FlutterBluePlus.startScan(
+      timeout: const Duration(seconds: 10),
+      withServices: [Guid(_serviceUUID)],
+    );
+
+    // Listen for scan results to find ESP32 device
+    StreamSubscription<List<ScanResult>>? scanSubscription;
+    scanSubscription = FlutterBluePlus.scanResults.listen((results) {
+      for (ScanResult result in results) {
+        // Check for device named 'ESP32_Isurika'
+        if (result.device.platformName == 'ESP32_Isurika') {
+          FlutterBluePlus.stopScan();
+          _connectToDevice(result.device);
+          scanSubscription?.cancel();
+          return;
+        }
+      }
+    });
+
+    // Stop scanning after timeout if no device is found
+    await Future.delayed(const Duration(seconds: 10));
+    await FlutterBluePlus.stopScan();
+    if (_connectedDevice == null) {
+      setState(() {
+        _connectionStatus = 'No ESP32 found';
+        _connected = false;
+        _isConnecting = false;
+      });
+    }
+  }
+
+  /// Connects to the specified Bluetooth device and discovers services
+  Future<void> _connectToDevice(BluetoothDevice device) async {
+    try {
+      // Attempt to connect to the device
+      await device.connect();
+      setState(() {
+        _connectedDevice = device;
+        _connectionStatus = 'Connected';
+        _connected = true;
+        _isConnecting = false;
+      });
+
+      // Discover services offered by the device
+      List<BluetoothService> services = await device.discoverServices();
+      for (BluetoothService service in services) {
+        if (service.uuid.toString() == _serviceUUID) {
+          for (BluetoothCharacteristic char in service.characteristics) {
+            if (char.uuid.toString() == _characteristicUUID) {
+              _targetCharacteristic = char;
+              _startSendingMessages();
+              return;
+            }
+          }
+        }
+      }
+      // Update status if characteristic is not found
+      setState(() {
+        _connectionStatus = 'Characteristic not found';
+        _connected = false;
+        _isConnecting = false;
+      });
+    } catch (e) {
+      // Handle connection errors
+      setState(() {
+        _connectionStatus = 'Connection failed: $e';
+        _connected = false;
+        _isConnecting = false;
+      });
+    }
+  }
+
+  /// Periodically sends messages to the ESP32 device
+  void _startSendingMessages() {
+    _sendTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+      if (_targetCharacteristic != null) {
+        try {
+          // Send 'hello esp32' message to the characteristic
+          await _targetCharacteristic!.write('hello esp32'.codeUnits);
+        } catch (e) {
+          // Handle write errors
+          setState(() {
+            _connectionStatus = 'Write failed: $e';
+            _connected = false;
+            _isConnecting = false;
+          });
+        }
+      }
+    });
+  }
+
+  /// Clean up resources when widget is disposed
+  @override
+  void dispose() {
+    _sendTimer?.cancel();
+    _connectedDevice?.disconnect();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: WillPopScope(
-        // Handle Android back button
+        // Handle Android back button behavior
         onWillPop: () async {
           if (_currentPage == AppPage.scalePractice ||
               _currentPage == AppPage.chordPractice) {
-            // If in a practice page → go back to Tutor instead of closing app
+            // Return to Tutor page instead of closing app
             setState(() => _currentPage = AppPage.tutor);
             return false;
           }
-          return true; // default behavior (exit app if at root)
+          return true; // Allow app to close if at root
         },
         child: Scaffold(
           body: Column(
@@ -40,25 +182,62 @@ class _MyAppState extends State<MyApp> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
+                      // Connect button with dynamic appearance
+                      Material(
+                        color: _connected
+                            ? Colors.green[400]
+                            : Colors.grey[300],
+                        borderRadius: BorderRadius.circular(20),
+                        child: InkWell(
                           borderRadius: BorderRadius.circular(20),
-                        ),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.circle,
-                              size: 12,
-                              color: _connected ? Colors.green : Colors.red,
+                          onTap: (_connected || _isConnecting)
+                              ? null
+                              : _connectToESP32, // Disable during connection or when connected
+                          hoverColor: Colors.grey[400],
+                          splashColor: Colors.greenAccent,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
                             ),
-                            SizedBox(width: 6),
-                            Text("Connect to Device"),
-                          ],
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Show loading animation or status circle
+                                _isConnecting
+                                    ? SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.black,
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.circle,
+                                        size: 12,
+                                        color: _connected
+                                            ? Colors.white
+                                            : Colors.red,
+                                      ),
+                                SizedBox(width: 8),
+                                // Display appropriate text based on state
+                                Text(
+                                  _isConnecting
+                                      ? "Connecting..."
+                                      : (_connected
+                                            ? "Connected"
+                                            : "Connect to Device"),
+                                  style: TextStyle(
+                                    color: _connected
+                                        ? Colors.white
+                                        : Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -101,7 +280,7 @@ class _MyAppState extends State<MyApp> {
     );
   }
 
-  /// Map current page → visible widget
+  /// Returns the appropriate widget based on the current page
   Widget _buildPage() {
     switch (_currentPage) {
       case AppPage.home:
@@ -126,7 +305,7 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  /// Map nav index → AppPage
+  /// Maps navigation bar index to AppPage
   AppPage _pageForNavIndex(int index) {
     switch (index) {
       case 0:
@@ -142,8 +321,8 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  /// Map AppPage → nav index
-  /// (Tutor is selected for both ScalePractice & ChordPractice)
+  /// Maps AppPage to navigation bar index
+  /// Tutor is selected for both ScalePractice and ChordPractice
   int _navIndexForPage(AppPage page) {
     switch (page) {
       case AppPage.home:
@@ -181,9 +360,8 @@ class HomePage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
             SizedBox(height: 20),
-            // Image at the top
+            // App logo
             Image.asset("assets/images/logo-2287665_1280.png", height: 120),
-            // SizedBox(height: 20),
             Text(
               "Welcome Isurika!",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -194,7 +372,7 @@ class HomePage extends StatelessWidget {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
-                minimumSize: Size(double.infinity, 80), // full width
+                minimumSize: Size(double.infinity, 80),
               ),
               onPressed: onScalePressed,
               child: Text(
@@ -208,7 +386,7 @@ class HomePage extends StatelessWidget {
             ),
             SizedBox(height: 16),
 
-            // Chords Practice button (navigates to chord page)
+            // Chord Practice button
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
@@ -226,7 +404,7 @@ class HomePage extends StatelessWidget {
             ),
             SizedBox(height: 16),
 
-            // Songs placeholder
+            // Songs button (placeholder)
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
@@ -257,12 +435,6 @@ class TutorPage extends StatelessWidget {
   }
 }
 
-/// ------------------ Chord Practice Page ------------------
-class ChordPracticePage extends StatefulWidget {
-  @override
-  _ChordPracticePageState createState() => _ChordPracticePageState();
-}
-
 /// ---------------- Scale Practice Page ----------------
 class ScalePracticePage extends StatelessWidget {
   @override
@@ -271,12 +443,19 @@ class ScalePracticePage extends StatelessWidget {
   }
 }
 
-class _ChordPracticePageState extends State<ChordPracticePage> {
-  String selectedNote = "C"; // currently selected note
-  String chordType = "Major"; // selected chord type
-  String showOption = "Finger position"; // selected display option
+/// ---------------- Chord Practice Page ----------------
+class ChordPracticePage extends StatefulWidget {
+  @override
+  _ChordPracticePageState createState() => _ChordPracticePageState();
+}
 
-  // List of note buttons
+class _ChordPracticePageState extends State<ChordPracticePage> {
+  // State variables for chord selection
+  String selectedNote = "C";
+  String chordType = "Major";
+  String showOption = "Finger position";
+
+  // List of musical notes for selection
   List<String> notes = [
     "C",
     "C#",
@@ -300,23 +479,23 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title
+            // Chord selection title
             Text(
               "Select a Chord",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 10),
 
-            // ------------------ Note selection chips ------------------
+            // Note selection chips
             Wrap(
               spacing: 6,
               children: notes.map((note) {
                 return ChoiceChip(
                   label: Text(note),
-                  selected: selectedNote == note, // highlight when selected
+                  selected: selectedNote == note,
                   onSelected: (_) {
                     setState(() {
-                      selectedNote = note; // update selected note
+                      selectedNote = note;
                     });
                   },
                 );
@@ -325,7 +504,7 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
 
             SizedBox(height: 20),
 
-            // ------------------ Chord type dropdown ------------------
+            // Chord type dropdown
             Row(
               children: [
                 Text("Type: "),
@@ -344,7 +523,7 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
               ],
             ),
 
-            // ------------------ Show option dropdown ------------------
+            // Display option dropdown
             Row(
               children: [
                 Text("Show: "),
@@ -365,16 +544,16 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
 
             SizedBox(height: 20),
 
-            // ------------------ Chord name + notes ------------------
+            // Display selected chord and notes
             Text(
-              "$selectedNote $chordType", // e.g. "C Major"
+              "$selectedNote $chordType",
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            Text("C E G", style: TextStyle(fontSize: 18)), // chord notes list
+            Text("C E G", style: TextStyle(fontSize: 18)),
 
             SizedBox(height: 20),
 
-            // ------------------ Fretboard ------------------
+            // Fretboard display
             FretboardWidget(),
           ],
         ),
@@ -383,14 +562,14 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
   }
 }
 
-/// ------------------ Fretboard Widget ------------------
-/// Displays strings, frets, and finger positions
+/// ---------------- Fretboard Widget ----------------
+/// Displays guitar strings, frets, and finger positions
 class FretboardWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // String names row (E A D G B E)
+        // String names (E A D G B E)
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: ["E", "A", "D", "G", "B", "E"]
@@ -401,17 +580,17 @@ class FretboardWidget extends StatelessWidget {
         ),
         SizedBox(height: 10),
 
-        // Example fretboard grid (5 frets x 6 strings)
+        // Fretboard grid (5 frets x 6 strings)
         Column(
           children: List.generate(5, (fret) {
             return Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: List.generate(6, (string) {
-                // Fret 0 = open/muted string indicators
+                // Fret 0: open/muted string indicators
                 if (fret == 0) {
                   return Icon(Icons.circle, size: 16, color: Colors.grey);
                 }
-                // Example chord finger positions:
+                // Example chord finger positions
                 else if (fret == 1 && string == 1) {
                   return Icon(Icons.circle, size: 20, color: Colors.red);
                 } else if (fret == 2 && string == 2) {
