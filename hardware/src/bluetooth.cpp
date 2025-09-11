@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "bluetooth.h"
-// #include "main.h"
+#include "main.h"
+#include "scale_and_chord_notes.h" // Include the scale and chord generation code
 
 // Define globals here (once)
 BLEServer* pServer = nullptr;
@@ -8,6 +9,7 @@ BLECharacteristic* pCharacteristic = nullptr;
 
 class MyCharacteristicCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* pCharacteristic) override {
+    // how value type got to string?
     std::string value = pCharacteristic->getValue();
     if (!value.empty()) {
       Serial.print("[");
@@ -15,6 +17,30 @@ class MyCharacteristicCallbacks : public BLECharacteristicCallbacks {
       Serial.print("s] Received: ");
       for (char c : value) {
         Serial.print(c);
+      }
+      if(value == "Major"){
+        Serial.println(" Major Chord Selected");
+        std::vector<int> chordNotes = generateChord(0, "Major");
+        for (int note : chordNotes)
+        {
+          Serial.print(noteNames[note]);
+          Serial.print(" ");
+        }
+        Serial.println();
+        std::vector<int> lightPixel = pixelCalculator(chordNotes);
+        // Set grid color to blue for the major scale
+        Serial.print("Lighting up pixels for chord: ");
+        Serial.println("C Major");
+        setGridColor(lightPixel, CRGB::Blue);
+        delay(1000);
+
+  // Clear the grid after displaying the scale
+  clearGrid();
+
+      } else if(value == "Minor"){
+        Serial.println(" Minor Chord Selected");
+      } else {
+        Serial.println(" Unknown Chord Selected");
       }
       Serial.println();
     }

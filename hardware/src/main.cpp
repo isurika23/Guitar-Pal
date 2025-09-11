@@ -1,15 +1,6 @@
-#include <Arduino.h>
-#include <FastLED.h>
-// #include <string>
-// #include <vector>
-// #include <map>
-// #include <iostream>
 #include "scale_and_chord_notes.h"
 #include "bluetooth.h"
-
-#define DATA_PIN 4
-#define NUM_LEDS 64 // 8x8 grid
-#define VALID_LEDS 48
+#include "main.h"
 
 CRGB leds[NUM_LEDS];
 int fretLEDs[VALID_LEDS];
@@ -119,27 +110,27 @@ void setup()
 void loop()
 {
   // Example usage
-  clearGrid();
-  int root = 0; // C
-  std::string chordName = "Major";
-  std::vector<int> chordNotes = generateChord(root, chordName);
-  Serial.print("Chord Notes: ");
-  for (int note : chordNotes)
-  {
-    Serial.print(noteNames[note]);
-    Serial.print(" ");
-  }
-  Serial.println();
+  // clearGrid();
+  // int root = 0; // C
+  // std::string chordName = "Major";
+  // std::vector<int> chordNotes = generateChord(root, chordName);
+  // Serial.print("Chord Notes: ");
+  // for (int note : chordNotes)
+  // {
+  //   Serial.print(noteNames[note]);
+  //   Serial.print(" ");
+  // }
+  // Serial.println();
 
-  std::vector<int> lightPixel = pixelCalculator(chordNotes);
-  // Set grid color to blue for the major scale
-  Serial.print("Lighting up pixels for chord: ");
-  Serial.println(chordName.c_str());
-  setGridColor(lightPixel, CRGB::Blue);
-  delay(1000);
+  // std::vector<int> lightPixel = pixelCalculator(chordNotes);
+  // // Set grid color to blue for the major scale
+  // Serial.print("Lighting up pixels for chord: ");
+  // Serial.println(chordName.c_str());
+  // setGridColor(lightPixel, CRGB::Blue);
+  // delay(1000);
 
-  // Clear the grid after displaying the scale
-  clearGrid();
+  // // Clear the grid after displaying the scale
+  // clearGrid();
 
   delay(2000); // Wait before repeating
 }
