@@ -1,7 +1,9 @@
 // Import required packages for Flutter UI and Bluetooth functionality
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'services/bluetooth_service.dart';
 
 // Entry point of the application
 void main() {
@@ -19,158 +21,76 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   // Track the current page displayed
   AppPage _currentPage = AppPage.home;
-  // Track Bluetooth connection status for UI indicator
-  bool _connected = false;
-  // Track if connection attempt is in progress
-  bool _isConnecting = false;
-  // Store connection status message
-  String _connectionStatus = 'Disconnected';
-  // Store the connected Bluetooth device
-  BluetoothDevice? _connectedDevice;
-  // Store the target Bluetooth characteristic for communication
-  BluetoothCharacteristic? _targetCharacteristic;
-  // Timer for periodic message sending to ESP32
-  Timer? _sendTimer;
 
-  // UUIDs for the ESP32 service and characteristic
-  final String _serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
-  final String _characteristicUUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+  // Bluetooth service instance
+  final ESP32BluetoothService _bluetoothService = ESP32BluetoothService();
 
-  /// Initiates connection to ESP32 device via Bluetooth Low Energy (BLE)
-  Future<void> _connectToESP32() async {
-    // Update UI to show connecting state
-    setState(() {
-      _isConnecting = true;
-      _connectionStatus = 'Connecting...';
-    });
+  // Stream subscriptions for Bluetooth state updates
+  late StreamSubscription<bool> _connectionStateSubscription;
+  late StreamSubscription<bool> _connectingStateSubscription;
+  late StreamSubscription<String> _connectionStatusSubscription;
 
-    // Check if Bluetooth adapter is on
-    bool isBluetoothOn = await FlutterBluePlus.adapterState
-        .firstWhere((state) => state == BluetoothAdapterState.on)
-        .then((state) => true)
-        .catchError((e) => false);
-    if (!isBluetoothOn) {
-      setState(() {
-        _connectionStatus = 'Bluetooth is off';
-        _connected = false;
-        _isConnecting = false;
-      });
-      return;
-    }
+  @override
+  void initState() {
+    super.initState();
+    // Listen to Bluetooth service state changes with error handling
+    _connectionStateSubscription = _bluetoothService.connectionStateStream
+        .listen(
+          (connected) {
+            if (mounted) setState(() {}); // Check if widget is still mounted
+          },
+          onError: (error) {
+            print('Connection state stream error: $error');
+          },
+        );
 
-    // Start scanning for devices advertising the specified service UUID
-    await FlutterBluePlus.startScan(
-      timeout: const Duration(seconds: 10),
-      withServices: [Guid(_serviceUUID)],
-    );
+    _connectingStateSubscription = _bluetoothService.connectingStateStream
+        .listen(
+          (connecting) {
+            if (mounted) setState(() {}); // Check if widget is still mounted
+          },
+          onError: (error) {
+            print('Connecting state stream error: $error');
+          },
+        );
 
-    // Listen for scan results to find ESP32 device
-    StreamSubscription<List<ScanResult>>? scanSubscription;
-    scanSubscription = FlutterBluePlus.scanResults.listen((results) {
-      for (ScanResult result in results) {
-        // Check for device named 'ESP32_Isurika'
-        if (result.device.platformName == 'ESP32_Isurika') {
-          FlutterBluePlus.stopScan();
-          _connectToDevice(result.device);
-          scanSubscription?.cancel();
-          return;
-        }
-      }
-    });
-
-    // Stop scanning after timeout if no device is found
-    await Future.delayed(const Duration(seconds: 10));
-    await FlutterBluePlus.stopScan();
-    if (_connectedDevice == null) {
-      setState(() {
-        _connectionStatus = 'No ESP32 found';
-        _connected = false;
-        _isConnecting = false;
-      });
-    }
-  }
-
-  /// Connects to the specified Bluetooth device and discovers services
-  Future<void> _connectToDevice(BluetoothDevice device) async {
-    try {
-      // Attempt to connect to the device
-      await device.connect();
-      setState(() {
-        _connectedDevice = device;
-        _connectionStatus = 'Connected';
-        _connected = true;
-        _isConnecting = false;
-      });
-
-      // Discover services offered by the device
-      List<BluetoothService> services = await device.discoverServices();
-      for (BluetoothService service in services) {
-        if (service.uuid.toString() == _serviceUUID) {
-          for (BluetoothCharacteristic char in service.characteristics) {
-            if (char.uuid.toString() == _characteristicUUID) {
-              _targetCharacteristic = char;
-              _startSendingMessages();
-              return;
-            }
-          }
-        }
-      }
-      // Update status if characteristic is not found
-      setState(() {
-        _connectionStatus = 'Characteristic not found';
-        _connected = false;
-        _isConnecting = false;
-      });
-    } catch (e) {
-      // Handle connection errors
-      setState(() {
-        _connectionStatus = 'Connection failed: $e';
-        _connected = false;
-        _isConnecting = false;
-      });
-    }
-  }
-
-  /// Periodically sends messages to the ESP32 device
-  void _startSendingMessages() {
-    _sendTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-      if (_targetCharacteristic != null) {
-        try {
-          // Send 'hello esp32' message to the characteristic
-          await _targetCharacteristic!.write('hello esp32'.codeUnits);
-        } catch (e) {
-          // Handle write errors
-          setState(() {
-            _connectionStatus = 'Write failed: $e';
-            _connected = false;
-            _isConnecting = false;
-          });
-        }
-      }
-    });
+    _connectionStatusSubscription = _bluetoothService.connectionStatusStream
+        .listen(
+          (status) {
+            if (mounted) setState(() {}); // Check if widget is still mounted
+          },
+          onError: (error) {
+            print('Connection status stream error: $error');
+          },
+        );
   }
 
   /// Clean up resources when widget is disposed
   @override
   void dispose() {
-    _sendTimer?.cancel();
-    _connectedDevice?.disconnect();
+    _connectionStateSubscription.cancel();
+    _connectingStateSubscription.cancel();
+    _connectionStatusSubscription.cancel();
+    _bluetoothService.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: WillPopScope(
-        // Handle Android back button behavior
-        onWillPop: () async {
-          if (_currentPage == AppPage.scalePractice ||
-              _currentPage == AppPage.chordPractice) {
-            // Return to Tutor page instead of closing app
-            setState(() => _currentPage = AppPage.tutor);
-            return false;
+      home: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (!didPop) {
+            if (_currentPage == AppPage.scalePractice ||
+                _currentPage == AppPage.chordPractice) {
+              // Return to Tutor page instead of closing app
+              setState(() => _currentPage = AppPage.tutor);
+            } else {
+              // Exit the app
+              SystemNavigator.pop();
+            }
           }
-          return true; // Allow app to close if at root
         },
         child: Scaffold(
           body: Column(
@@ -184,15 +104,18 @@ class _MyAppState extends State<MyApp> {
                     children: [
                       // Connect button with dynamic appearance
                       Material(
-                        color: _connected
+                        color: _bluetoothService.connected
                             ? Colors.green[400]
                             : Colors.grey[300],
                         borderRadius: BorderRadius.circular(20),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(20),
-                          onTap: (_connected || _isConnecting)
+                          onTap:
+                              (_bluetoothService.connected ||
+                                  _bluetoothService.isConnecting)
                               ? null
-                              : _connectToESP32, // Disable during connection or when connected
+                              : _bluetoothService
+                                    .connectToESP32, // Disable during connection or when connected
                           hoverColor: Colors.grey[400],
                           splashColor: Colors.greenAccent,
                           child: Container(
@@ -204,7 +127,7 @@ class _MyAppState extends State<MyApp> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 // Show loading animation or status circle
-                                _isConnecting
+                                _bluetoothService.isConnecting
                                     ? SizedBox(
                                         width: 12,
                                         height: 12,
@@ -216,20 +139,20 @@ class _MyAppState extends State<MyApp> {
                                     : Icon(
                                         Icons.circle,
                                         size: 12,
-                                        color: _connected
+                                        color: _bluetoothService.connected
                                             ? Colors.white
                                             : Colors.red,
                                       ),
                                 SizedBox(width: 8),
                                 // Display appropriate text based on state
                                 Text(
-                                  _isConnecting
+                                  _bluetoothService.isConnecting
                                       ? "Connecting..."
-                                      : (_connected
+                                      : (_bluetoothService.connected
                                             ? "Connected"
                                             : "Connect to Device"),
                                   style: TextStyle(
-                                    color: _connected
+                                    color: _bluetoothService.connected
                                         ? Colors.white
                                         : Colors.black,
                                     fontWeight: FontWeight.bold,
@@ -293,7 +216,14 @@ class _MyAppState extends State<MyApp> {
           },
         );
       case AppPage.tutor:
-        return TutorPage();
+        return TutorPage(
+          onScalePressed: () {
+            setState(() => _currentPage = AppPage.scalePractice);
+          },
+          onChordPressed: () {
+            setState(() => _currentPage = AppPage.chordPractice);
+          },
+        );
       case AppPage.tuner:
         return Center(child: Text("Tuner Page"));
       case AppPage.profile:
@@ -301,7 +231,7 @@ class _MyAppState extends State<MyApp> {
       case AppPage.scalePractice:
         return ScalePracticePage();
       case AppPage.chordPractice:
-        return ChordPracticePage();
+        return ChordPracticePage(bluetoothService: _bluetoothService);
     }
   }
 
@@ -429,9 +359,40 @@ class HomePage extends StatelessWidget {
 
 /// ---------------- Tutor Page ----------------
 class TutorPage extends StatelessWidget {
+  final VoidCallback onScalePressed;
+  final VoidCallback onChordPressed;
+
+  const TutorPage({
+    required this.onScalePressed,
+    required this.onChordPressed,
+    Key? key,
+  }) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
-    return Center(child: Text("Tutor Placeholder"));
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            "Tutor Page",
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 20),
+          Text("Choose your practice mode:"),
+          SizedBox(height: 30),
+          ElevatedButton(
+            onPressed: onScalePressed,
+            child: Text("Scale Practice"),
+          ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: onChordPressed,
+            child: Text("Chord Practice"),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -439,12 +400,30 @@ class TutorPage extends StatelessWidget {
 class ScalePracticePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Center(child: Text("Scale Practice Page"));
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            "Scale Practice",
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 20),
+          Text("Practice your scales here"),
+          // Add scale practice functionality
+        ],
+      ),
+    );
   }
 }
 
 /// ---------------- Chord Practice Page ----------------
 class ChordPracticePage extends StatefulWidget {
+  final ESP32BluetoothService bluetoothService;
+
+  const ChordPracticePage({required this.bluetoothService, Key? key})
+    : super(key: key);
+
   @override
   _ChordPracticePageState createState() => _ChordPracticePageState();
 }
@@ -459,17 +438,28 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
   List<String> notes = [
     "C",
     "C#",
+    "D♭",
     "D",
     "D#",
+    "E♭",
     "E",
     "F",
     "F#",
+    "G♭",
     "G",
     "G#",
+    "A♭",
     "A",
     "A#",
+    "B♭",
     "B",
   ];
+
+  // Send chord information to ESP32 when selection changes
+  void _sendChordToESP32() {
+    String chordInfo = "$selectedNote$chordType";
+    widget.bluetoothService.sendMessage(chordInfo);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -497,6 +487,7 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
                     setState(() {
                       selectedNote = note;
                     });
+                    _sendChordToESP32();
                   },
                 );
               }).toList(),
@@ -518,6 +509,7 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
                     setState(() {
                       chordType = val!;
                     });
+                    _sendChordToESP32();
                   },
                 ),
               ],
@@ -563,48 +555,23 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
 }
 
 /// ---------------- Fretboard Widget ----------------
-/// Displays guitar strings, frets, and finger positions
 class FretboardWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // String names (E A D G B E)
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: ["E", "A", "D", "G", "B", "E"]
-              .map(
-                (s) => Text(s, style: TextStyle(fontWeight: FontWeight.bold)),
-              )
-              .toList(),
+    return Container(
+      height: 200,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.brown),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: Text(
+          "Fretboard Display\n(To be implemented)",
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 16),
         ),
-        SizedBox(height: 10),
-
-        // Fretboard grid (5 frets x 6 strings)
-        Column(
-          children: List.generate(5, (fret) {
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(6, (string) {
-                // Fret 0: open/muted string indicators
-                if (fret == 0) {
-                  return Icon(Icons.circle, size: 16, color: Colors.grey);
-                }
-                // Example chord finger positions
-                else if (fret == 1 && string == 1) {
-                  return Icon(Icons.circle, size: 20, color: Colors.red);
-                } else if (fret == 2 && string == 2) {
-                  return Icon(Icons.circle, size: 20, color: Colors.green);
-                } else if (fret == 3 && string == 3) {
-                  return Icon(Icons.circle, size: 20, color: Colors.blue);
-                }
-                // Empty fret
-                return Container(width: 20, height: 20);
-              }),
-            );
-          }),
-        ),
-      ],
+      ),
     );
   }
 }
