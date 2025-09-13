@@ -7,86 +7,149 @@
 BLEServer* pServer = nullptr;
 BLECharacteristic* pCharacteristic = nullptr;
 
-// Helper function to parse string (simple tokenizer)
-void parseCommand(String value, String* tokens, int* tokenCount) {
-  *tokenCount = 0;
-  int start = 0;
-  int end = value.indexOf(' ');
+void convertStringPositionsToPixels(int* stringPositions, int* pixels) {
+  int pixelCount = 0;
   
-  while (end != -1 && *tokenCount < 5) {
-    tokens[(*tokenCount)++] = value.substring(start, end);
-    start = end + 1;
-    end = value.indexOf(' ', start);
+  for (int string = 0; string < 6; string++) {
+    int fretPosition = stringPositions[string];
+    
+    // Skip if no LED should be lit for this string (position 0)
+    if (fretPosition <= 0) {
+      if(fretPosition < 0){
+        Serial.print("Don't strum string: ");
+        Serial.println(string);
+        pixels[pixelCount] = string; // Indicate no strum for this string
+        leds[fretLEDs[pixels[pixelCount]]] = CRGB::Red; // Use red for muted strings
+        pixelCount++;
+      } else if (fretPosition == 0) {
+        Serial.print("Open string: ");
+        Serial.println(string);
+        pixels[pixelCount] = string; // Indicate open string for this string
+        leds[fretLEDs[pixels[pixelCount]]] = CRGB::Green; // Use green for open strings
+        pixelCount++;
+      }
+      continue;
+    }
+    
+    // Convert to grid position
+    // fretPosition 1 = fret 0 (open string) = LED indices 0-5
+    // fretPosition 2 = fret 1 = LED indices 6-11, etc.
+    int gridPosition = (fretPosition) * 6 + string;
+    
+    // Make sure we don't exceed the valid LED range
+    if (gridPosition < VALID_LEDS) {
+      pixels[pixelCount] = gridPosition;
+      leds[fretLEDs[gridPosition]] = CRGB::Blue; // Use blue for normal strummed strings
+      pixelCount++;
+      
+      Serial.print("String ");
+      Serial.print(string);
+      Serial.print(", Position ");
+      Serial.print(fretPosition);
+      Serial.print(" -> Grid position ");
+      Serial.println(gridPosition);
+    }
   }
   
-  if (start < value.length()) {
-    tokens[(*tokenCount)++] = value.substring(start);
+  return;
+}
+
+// Helper function to parse string (simple tokenizer)
+// Parse a comma-separated string into tokens, handling optional [ ] brackets
+// tokens: pre-allocated String array to store tokens
+// maxTokens: maximum number of tokens the array can hold
+// tokenCount: pointer to integer to store the number of tokens found
+int parseCommand(String value, int* tokens, int maxTokens) {
+  // Initialize token count
+  int tokenCount = 0;
+  Serial.print(value);
+
+  // Check for empty or invalid input
+  if (value.length() == 0) {
+    // Serial.println(" - Empty command");
+    return 0;
   }
 
-  for (int i = 0; i < *tokenCount; i++) {
-    tokens[i].trim();
-    Serial.print("Token ");
-    Serial.print(i);
-    Serial.print(": ");
-    Serial.println(tokens[i]);
+  int start = 0;
+  int end = value.indexOf(',');
+
+  // Skip opening bracket if present
+  if (value.startsWith("[")) {
+    // Serial.println(" - Skipping opening bracket");
+    start = 1;
   }
+
+  while (end != -1 && tokenCount < maxTokens) {
+    String temp = value.substring(start, end);
+    temp.trim();
+    tokens[tokenCount] = temp.toInt();
+    // Serial.print(" - Found token: ");
+    // Serial.println(temp);
+    tokenCount++;
+    start = end + 1;
+    end = value.indexOf(',', start);
+  }
+
+  // Add the last token if there's space
+  if (tokenCount < maxTokens) {
+    String lastToken = value.substring(start);
+    lastToken.trim();
+    // Remove closing bracket if present
+    // Serial.println(" - Found last token: " + lastToken + (lastToken.endsWith("]") ? " (with closing bracket)" : ""));
+    if (lastToken.endsWith("]")) {
+      lastToken = lastToken.substring(0, lastToken.length() - 1);
+      lastToken.trim();
+    }
+    tokens[tokenCount] = lastToken.toInt();
+    // Serial.print(" - Found last token: ");
+    // Serial.println(lastToken);
+    tokenCount++;
+  }
+
+  Serial.print("Parsed tokens: ");
+  for (int i = 0; i < tokenCount; i++) {
+    Serial.print(tokens[i]);
+    if (i < tokenCount - 1) Serial.print(", ");
+  }
+  Serial.println();
+  
+  return tokenCount; // Return the actual token count
 }
 
 class MyCharacteristicCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* pCharacteristic) override {
     String value = String(pCharacteristic->getValue().c_str());
-    
-    // Parse the command
-    String tokens[5];
-    int tokenCount;
-    parseCommand(value, tokens, &tokenCount);
-    
-    // Print each token
-    for (int i = 0; i < tokenCount; i++) {
-      Serial.println(tokens[i]);
-    }
-    
-    if (value.length() > 0) {
-      Serial.print("[");
-      Serial.print(millis() / 1000);
-      Serial.print("s] Received: ");
-      Serial.print(value);
+    Serial.println("Raw received value: " + value);
 
-      if(tokens[1] == "Major" || tokens[1] == "Minor" && tokens[0].toInt() >=0 && tokens[0].toInt() <=11) {
-        Serial.print(" ");
-        Serial.print(tokens[1]);
-        Serial.println(" Chord Selected");
-        
-        int chordNotes[MAX_CHORD_NOTES];
-        int noteCount = generateChord(tokens[0].toInt(), tokens[1].c_str(), chordNotes);
-        
-        for (int i = 0; i < noteCount; i++)
-        {
-          Serial.print(noteNames[chordNotes[i]]);
-          Serial.print(" ");
+    // Simple parsing: expecting "[1, 3, 5, 6, 9, 23]" or array of positions
+    if(value != "Guitar-Pal") {
+      int tokens[6];
+      int tokenCount = parseCommand(value, tokens, 6); // Pass 6 as maxTokens
+
+      // Serial.print("Token count: ");
+      // Serial.println(tokenCount);
+
+      if (tokenCount > 0) {
+        Serial.print("[");
+        Serial.print(millis() / 1000);
+        Serial.print("s] Received: ");
+        Serial.print(value);
+
+        // Check if it's a chord command (first token is note, second is Major/Minor)
+        if (tokenCount == 6) {
+         
+          int pixels[6];
+          clearGrid();
+          convertStringPositionsToPixels(tokens, pixels);
+          FastLED.show();
+        } else {
+          Serial.println(" - Invalid command format");
+          
+
         }
         Serial.println();
-        
-        int lightPixels[MAX_PIXELS];
-        int pixelCount = pixelCalculator(chordNotes, noteCount, lightPixels);
-        
-        // Set grid color based on chord type
-        Serial.print("Lighting up pixels for chord: ");
-        Serial.print(tokens[0]);
-        Serial.print(" ");
-        Serial.println(tokens[1]);
-        
-        CRGB color = (tokens[1] == "Major") ? CRGB::Blue : CRGB::Red;
-        setGridColor(lightPixels, pixelCount, color);
-        delay(1000);
-
-        // Clear the grid after displaying the scale
-        // clearGrid();
-
-      } else {
-        Serial.println(" Unknown Chord Selected");
       }
-      Serial.println();
+    
     }
   }
 };

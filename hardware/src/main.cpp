@@ -92,6 +92,7 @@ void setup()
 
   // Initialize Bluetooth
   setupBluetooth();
+  clearGrid();
 }
 
 void loop()
