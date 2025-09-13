@@ -15,7 +15,5 @@ extern BLECharacteristic* pCharacteristic;
 
 // Function prototypes
 void setupBluetooth();
-void convertStringPositionsToPixels(int* stringPositions, int* pixels);
-int parseCommand(String value, String* tokens, int maxTokens);
 
 #endif // BLUETOOTH_H
