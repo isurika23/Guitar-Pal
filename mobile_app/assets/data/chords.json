@@ -58,7 +58,7 @@
     "g_sharp": {
       "notes": ["G#", "C", "D#"],
       "no_strum": ["E_low"],
-      "fret_num": [-1, 6, 5, 3, 4, 3]
+      "fret_num": [3, 2, 1, 1, 1, -1]
     },
     "a_flat": {
       "notes": ["Ab", "C", "Eb"],
