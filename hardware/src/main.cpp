@@ -7,23 +7,6 @@ int fretLEDs[VALID_LEDS];
 
 int guitarStrings[6] = {4, 9, 2, 7, 11, 4};
 
-// // Scale interval patterns
-// const int T = 2;
-// const int S = 1;
-
-// // Map of scale name -> vector of intervals
-// std::map<std::string, std::vector<int>> scales = {
-//     {"Major", {T, T, S, T, T, T, S}},
-//     {"Minor", {T, S, T, T, S, T, T}},
-//     // {"Harmonic Minor", {T, S, T, T, S, 3, S}},    // example
-//     // {"Pentatonic Major", {T, T, T + S, T, T + S}} // example
-// };
-
-// static const char *noteNames[12] = {
-//   "C", "C#", "D", "D#", "E", "F",
-//   "F#", "G", "G#", "A", "A#", "B"
-// };
-
 // for grid board setup;
 void setGridPixeltoFrets()
 {
@@ -34,18 +17,15 @@ void setGridPixeltoFrets()
     {
       fretLEDs[fretLEDcount] = i;
       fretLEDcount++;
-      // } else {
     }
   }
 }
 
-void setGridColor(std::vector<int> sequence, CRGB color)
+void setGridColor(int* sequence, int count, CRGB color)
 {
-  for (int i : sequence)
+  for (int i = 0; i < count; i++)
   {
-    leds[fretLEDs[i]] = color;
-    // FastLED.show();
-    // delay(500);
+    leds[fretLEDs[sequence[i]]] = color;
   }
   FastLED.show();
 }
@@ -59,25 +39,37 @@ void clearGrid()
   FastLED.show();
 }
 
-std::vector<int> pixelCalculator(const std::vector<int> &chordNotes)
+int pixelCalculator(const int* chordNotes, int noteCount, int* pixels)
 {
   Serial.println("Calculating pixels for chord notes...");
-  std::vector<int> pixels;
+  int pixelCount = 0;
+  
   for (int i = 0; i < 6; i++)
   {
     int currentStringNote = guitarStrings[i];
     int ledPixelIndex = i;
-    while (true)
+    
+    while (ledPixelIndex < VALID_LEDS)
     {
-      if (std::find(chordNotes.begin(), chordNotes.end(), currentStringNote) != chordNotes.end())
+      // Check if current note is in chord
+      bool noteFound = false;
+      for (int j = 0; j < noteCount; j++) {
+        if (chordNotes[j] == currentStringNote) {
+          noteFound = true;
+          break;
+        }
+      }
+      
+      if (noteFound)
       {
-      Serial.print("String: ");
-      Serial.println(i);
-      Serial.print(" Fret: ");
-      Serial.println(ledPixelIndex);
-        pixels.push_back(ledPixelIndex);
+        Serial.print("String: ");
+        Serial.println(i);
+        Serial.print(" Fret: ");
+        Serial.println(ledPixelIndex);
+        pixels[pixelCount++] = ledPixelIndex;
         break;
       }
+      
       Serial.print("String: ");
       Serial.println(i);
       Serial.print(" Fret: ");
@@ -86,13 +78,8 @@ std::vector<int> pixelCalculator(const std::vector<int> &chordNotes)
       ledPixelIndex += 6;
     }
   }
-  // std::cout << "Pixels to light: ";
-  // for (int pixel : pixels)
-  // {
-  //   std::cout << pixel << " ";
-  // }
-  // std::cout << std::endl;
-  return pixels;
+  
+  return pixelCount;
 }
 
 void setup()
@@ -109,28 +96,5 @@ void setup()
 
 void loop()
 {
-  // Example usage
-  // clearGrid();
-  // int root = 0; // C
-  // std::string chordName = "Major";
-  // std::vector<int> chordNotes = generateChord(root, chordName);
-  // Serial.print("Chord Notes: ");
-  // for (int note : chordNotes)
-  // {
-  //   Serial.print(noteNames[note]);
-  //   Serial.print(" ");
-  // }
-  // Serial.println();
-
-  // std::vector<int> lightPixel = pixelCalculator(chordNotes);
-  // // Set grid color to blue for the major scale
-  // Serial.print("Lighting up pixels for chord: ");
-  // Serial.println(chordName.c_str());
-  // setGridColor(lightPixel, CRGB::Blue);
-  // delay(1000);
-
-  // // Clear the grid after displaying the scale
-  // clearGrid();
-
   delay(2000); // Wait before repeating
 }

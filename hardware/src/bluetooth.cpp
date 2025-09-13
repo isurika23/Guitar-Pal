@@ -1,44 +1,88 @@
 #include <Arduino.h>
 #include "bluetooth.h"
 #include "main.h"
-#include "scale_and_chord_notes.h" // Include the scale and chord generation code
+#include "scale_and_chord_notes.h"
 
 // Define globals here (once)
 BLEServer* pServer = nullptr;
 BLECharacteristic* pCharacteristic = nullptr;
 
+// Helper function to parse string (simple tokenizer)
+void parseCommand(String value, String* tokens, int* tokenCount) {
+  *tokenCount = 0;
+  int start = 0;
+  int end = value.indexOf(' ');
+  
+  while (end != -1 && *tokenCount < 5) {
+    tokens[(*tokenCount)++] = value.substring(start, end);
+    start = end + 1;
+    end = value.indexOf(' ', start);
+  }
+  
+  if (start < value.length()) {
+    tokens[(*tokenCount)++] = value.substring(start);
+  }
+
+  for (int i = 0; i < *tokenCount; i++) {
+    tokens[i].trim();
+    Serial.print("Token ");
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.println(tokens[i]);
+  }
+}
+
 class MyCharacteristicCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* pCharacteristic) override {
-    // how value type got to string?
-    std::string value = pCharacteristic->getValue();
-    if (!value.empty()) {
+    String value = String(pCharacteristic->getValue().c_str());
+    
+    // Parse the command
+    String tokens[5];
+    int tokenCount;
+    parseCommand(value, tokens, &tokenCount);
+    
+    // Print each token
+    for (int i = 0; i < tokenCount; i++) {
+      Serial.println(tokens[i]);
+    }
+    
+    if (value.length() > 0) {
       Serial.print("[");
       Serial.print(millis() / 1000);
       Serial.print("s] Received: ");
-      for (char c : value) {
-        Serial.print(c);
-      }
-      if(value == "Major"){
-        Serial.println(" Major Chord Selected");
-        std::vector<int> chordNotes = generateChord(0, "Major");
-        for (int note : chordNotes)
+      Serial.print(value);
+
+      if(tokens[1] == "Major" || tokens[1] == "Minor" && tokens[0].toInt() >=0 && tokens[0].toInt() <=11) {
+        Serial.print(" ");
+        Serial.print(tokens[1]);
+        Serial.println(" Chord Selected");
+        
+        int chordNotes[MAX_CHORD_NOTES];
+        int noteCount = generateChord(tokens[0].toInt(), tokens[1].c_str(), chordNotes);
+        
+        for (int i = 0; i < noteCount; i++)
         {
-          Serial.print(noteNames[note]);
+          Serial.print(noteNames[chordNotes[i]]);
           Serial.print(" ");
         }
         Serial.println();
-        std::vector<int> lightPixel = pixelCalculator(chordNotes);
-        // Set grid color to blue for the major scale
+        
+        int lightPixels[MAX_PIXELS];
+        int pixelCount = pixelCalculator(chordNotes, noteCount, lightPixels);
+        
+        // Set grid color based on chord type
         Serial.print("Lighting up pixels for chord: ");
-        Serial.println("C Major");
-        setGridColor(lightPixel, CRGB::Blue);
+        Serial.print(tokens[0]);
+        Serial.print(" ");
+        Serial.println(tokens[1]);
+        
+        CRGB color = (tokens[1] == "Major") ? CRGB::Blue : CRGB::Red;
+        setGridColor(lightPixels, pixelCount, color);
         delay(1000);
 
-  // Clear the grid after displaying the scale
-  clearGrid();
+        // Clear the grid after displaying the scale
+        // clearGrid();
 
-      } else if(value == "Minor"){
-        Serial.println(" Minor Chord Selected");
       } else {
         Serial.println(" Unknown Chord Selected");
       }

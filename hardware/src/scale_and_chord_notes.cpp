@@ -1,16 +1,15 @@
 #include "scale_and_chord_notes.h"
-#include <Arduino.h>  // For Serial on ESP32
 
 // Intervals
 const int T = 2;
 const int S = 1;
 
-// Scale definitions
-std::map<std::string, std::vector<int>> scales = {
-    {"Major", {T, T, S, T, T, T, S}},
-    {"Minor", {T, S, T, T, S, T, T}},
-    {"Diminished Whole-Half", {T, S, T, S, T, S, T, S}},
-    {"Diminished Half-Whole", {S, T, S, T, S, T, S, T}}
+// Scale definitions using structs
+ScalePattern scales[MAX_SCALE_TYPES] = {
+    {"Major", {T, T, S, T, T, T, S}, 7},
+    {"Minor", {T, S, T, T, S, T, T}, 7},
+    {"Diminished Whole-Half", {T, S, T, S, T, S, T, S}, 8},
+    {"Diminished Half-Whole", {S, T, S, T, S, T, S, T}, 8}
 };
 
 const char* noteNames[12] = {
@@ -18,62 +17,87 @@ const char* noteNames[12] = {
   "F#", "G", "G#", "A", "A#", "B"
 };
 
-// Generate a scale
-std::vector<int> generateScale(int root, const std::string& scaleName) {
-    std::vector<int> result;
-    int current = root;
-    result.push_back(current);
+// Helper function to find scale by name
+int findScaleIndex(const char* scaleName) {
+    for (int i = 0; i < MAX_SCALE_TYPES; i++) {
+        if (strcmp(scales[i].name, scaleName) == 0) {
+            return i;
+        }
+    }
+    return -1; // Not found
+}
 
-    for (int step : scales[scaleName]) {
-        current = (current + step) % 12;
-        result.push_back(current);
+// Generate a scale
+int generateScale(int root, const char* scaleName, int* output) {
+    int scaleIndex = findScaleIndex(scaleName);
+    if (scaleIndex == -1) {
+        Serial.println("Scale not found!");
+        return 0;
+    }
+
+    ScalePattern& scale = scales[scaleIndex];
+    int current = root;
+    output[0] = current;
+    int count = 1;
+
+    for (int i = 0; i < scale.length; i++) {
+        current = (current + scale.intervals[i]) % 12;
+        output[count++] = current;
+        if (count >= MAX_SCALE_NOTES) break;
     }
 
     // Debug print to Serial
     Serial.print("Generated ");
-    Serial.print(scaleName.c_str());
+    Serial.print(scaleName);
     Serial.print(" scale: ");
-    for (int note : result) {
-        Serial.print(noteNames[note]);
+    for (int i = 0; i < count; i++) {
+        Serial.print(noteNames[output[i]]);
         Serial.print(" ");
     }
     Serial.println();
 
     Serial.print("Note indices: ");
-    for (int note : result) {
-        Serial.print(note);
+    for (int i = 0; i < count; i++) {
+        Serial.print(output[i]);
         Serial.print(" ");
     }
     Serial.println();
 
-    return result;
+    return count;
 }
 
 // Generate a chord
-std::vector<int> generateChord(int root, const std::string& chordType) {
-    std::vector<int> chord;
-    std::vector<int> scale = generateScale(root, chordType);
+int generateChord(int root, const char* chordType, int* output) {
+    int scaleNotes[MAX_SCALE_NOTES];
+    int scaleCount = generateScale(root, chordType, scaleNotes);
+    
+    if (scaleCount < 5) {
+        Serial.println("Not enough notes for chord!");
+        return 0;
+    }
 
-    chord.push_back(root);
-    chord.push_back(scale[2]); // third
-    chord.push_back(scale[4]); // fifth
+    output[0] = root;           // root
+    output[1] = scaleNotes[2];  // third
+    output[2] = scaleNotes[4];  // fifth
+    
+    int chordCount = 3;
 
     // Debug print to Serial
     Serial.print("Generated ");
-    Serial.print(chordType.c_str());
+    Serial.print(chordType);
     Serial.print(" chord: ");
-    for (int note : chord) {
-        Serial.print(noteNames[note]);
+    for (int i = 0; i < chordCount; i++) {
+        Serial.print(noteNames[output[i]]);
         Serial.print(" ");
     }
     Serial.println();
 
     Serial.print("Chord indices: ");
-    for (int note : chord) {
-        Serial.print(note);
+    for (int i = 0; i < chordCount; i++) {
+        Serial.print(output[i]);
         Serial.print(" ");
     }
     Serial.println();
 
-    return chord;
+    return chordCount;
 }

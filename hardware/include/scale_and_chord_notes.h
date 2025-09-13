@@ -1,16 +1,27 @@
 #ifndef SCALE_AND_CHORD_NOTES_H
 #define SCALE_AND_CHORD_NOTES_H
 
-#include <string>
-#include <vector>
-#include <map>
+#include <Arduino.h>
 
-// extern = defined elsewhere, not duplicated
-extern std::map<std::string, std::vector<int>> scales;
+// Constants
+#define MAX_SCALE_NOTES 8
+#define MAX_CHORD_NOTES 4
+#define MAX_SCALE_TYPES 4
+
+// Note names array
 extern const char* noteNames[12];
 
+// Scale structures
+struct ScalePattern {
+  const char* name;
+  int intervals[MAX_SCALE_NOTES];
+  int length;
+};
+
+extern ScalePattern scales[MAX_SCALE_TYPES];
+
 // Function declarations
-std::vector<int> generateScale(int root, const std::string& scaleName);
-std::vector<int> generateChord(int root, const std::string& chordType);
+int generateScale(int root, const char* scaleName, int* output);
+int generateChord(int root, const char* chordType, int* output);
 
 #endif
