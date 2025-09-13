@@ -1,5 +1,6 @@
 // Import required packages for Flutter UI and Bluetooth functionality
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -431,34 +432,136 @@ class ChordPracticePage extends StatefulWidget {
 class _ChordPracticePageState extends State<ChordPracticePage> {
   // State variables for chord selection
   String selectedNote = "C";
+  int noteIndex = 0;
   String chordType = "Major";
   String showOption = "Finger position";
+  List<String> chordNotes = ["C", "E", "G"];
+  List<int> fretPositions = [];
+  List<String> noStrumStrings = [];
+
+  // Add variable to store chord data
+  Map<String, dynamic>? chordData;
 
   // List of musical notes for selection
   List<String> notes = [
     "C",
     "C#",
-    "D♭",
+    // "D♭",
     "D",
     "D#",
-    "E♭",
+    // "E♭",
     "E",
     "F",
     "F#",
-    "G♭",
+    // "G♭",
     "G",
     "G#",
-    "A♭",
+    // "A♭",
     "A",
     "A#",
-    "B♭",
+    // "B♭",
     "B",
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadChordData();
+  }
+
+  // Load chord data from JSON file
+  Future<void> _loadChordData() async {
+    try {
+      String jsonString = await rootBundle.loadString(
+        'assets/data/chords.json',
+      );
+      setState(() {
+        chordData = json.decode(jsonString);
+        print("Chord data loaded successfully");
+        // print("Isurika");
+        print(chordData);
+      });
+    } catch (e) {
+      print('Error loading chord data: $e');
+    }
+  }
+
+  // Convert display note name to JSON key format
+  String _noteToJsonKey(String note) {
+    Map<String, String> noteMap = {
+      "C": "c",
+      "C#": "c_sharp",
+      "D": "d",
+      "D#": "d_sharp",
+      "E": "e",
+      "F": "f",
+      "F#": "f_sharp",
+      "G": "g",
+      "G#": "g_sharp",
+      "A": "a",
+      "A#": "a_sharp",
+      "B": "b",
+    };
+    return noteMap[note] ?? "c";
+  }
+
   // Send chord information to ESP32 when selection changes
-  void _sendChordToESP32() {
-    String chordInfo = "$selectedNote$chordType";
-    widget.bluetoothService.sendMessage(chordInfo);
+  void _sendChordToESP32() async {
+    if (chordData == null) {
+      print('Chord data not loaded yet');
+      return;
+    }
+
+    try {
+      // Get chord type key (major/minor in lowercase)
+      String chordTypeKey = chordType.toLowerCase();
+
+      // Get note key (e.g., "c", "c_sharp", etc.)
+      String noteKey = _noteToJsonKey(selectedNote);
+
+      // Access chord data: chordData["major"]["c"] or chordData["minor"]["c_sharp"]
+      Map<String, dynamic>? chordInfo = chordData![chordTypeKey]?[noteKey];
+
+      if (chordInfo != null) {
+        // Extract chord information
+        List<String> notes = List<String>.from(chordInfo['notes'] ?? []);
+        List<int> fretNum = List<int>.from(chordInfo['fret_num'] ?? []);
+        List<String> noStrum = List<String>.from(chordInfo['no_strum'] ?? []);
+
+        // Update state with chord information
+        setState(() {
+          chordNotes = notes;
+          fretPositions = fretNum;
+          noStrumStrings = noStrum;
+        });
+
+        // Create message for ESP32
+        Map<String, dynamic> chordMessage = {
+          "chord": "$selectedNote $chordType",
+          "notes": notes,
+          "fret_positions": fretNum,
+          "no_strum": noStrum,
+        };
+
+        String chordJsonString = json.encode(chordMessage);
+        String fretPosString = chordMessage['fret_positions'].toString();
+        print("$chordJsonString");
+        print("Sending fret positions to ESP32: $fretPosString");
+        widget.bluetoothService.sendMessage(fretPosString);
+      } else {
+        print("Chord not found: $chordTypeKey -> $noteKey");
+        // Fallback message
+        String fallbackInfo = "${noteIndex.toString()} $chordType";
+        print("Sending fallback chord to ESP32: $fallbackInfo");
+        widget.bluetoothService.sendMessage(fallbackInfo);
+      }
+    } catch (e) {
+      print('Error processing chord data: $e');
+      // Fallback to original method
+      String fallbackInfo = "${noteIndex.toString()} $chordType";
+      print("Sending fallback chord to ESP32: $fallbackInfo");
+      widget.bluetoothService.sendMessage(fallbackInfo);
+    }
   }
 
   @override
@@ -486,6 +589,7 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
                   onSelected: (_) {
                     setState(() {
                       selectedNote = note;
+                      noteIndex = notes.indexOf(note);
                     });
                     _sendChordToESP32();
                   },
@@ -499,7 +603,7 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
             Row(
               children: [
                 Text("Type: "),
-                SizedBox(width: 10),
+                SizedBox(height: 10),
                 DropdownButton<String>(
                   value: chordType,
                   items: ["Major", "Minor"]
@@ -519,7 +623,7 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
             Row(
               children: [
                 Text("Show: "),
-                SizedBox(width: 10),
+                SizedBox(height: 10),
                 DropdownButton<String>(
                   value: showOption,
                   items: ["Finger position", "Intervals", "Notes"]
@@ -541,12 +645,36 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
               "$selectedNote $chordType",
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            Text("C E G", style: TextStyle(fontSize: 18)),
+            Text(
+              "Notes: ${chordNotes.join(" ")}",
+              style: TextStyle(fontSize: 18),
+            ),
 
-            SizedBox(height: 20),
+            // Display fret positions if available
+            // if (fretPositions.isNotEmpty) ...[
+            //   SizedBox(height: 10),
+            //   Text(
+            //     "Fret positions: ${fretPositions.map((f) => f == -1 ? "X" : f.toString()).join(" ")}",
+            //     style: TextStyle(fontSize: 16),
+            //   ),
+            // ],
+
+            // // Display strings not to strum if any
+            // if (noStrumStrings.isNotEmpty) ...[
+            //   SizedBox(height: 5),
+            //   Text(
+            //     "Don't strum: ${noStrumStrings.join(", ")}",
+            //     style: TextStyle(fontSize: 14, color: Colors.red),
+            //   ),
+            // ],
+
+            // SizedBox(height: 20),
 
             // Fretboard display
-            FretboardWidget(),
+            FretboardWidget(
+              fretPositions: fretPositions,
+              noStrumStrings: noStrumStrings,
+            ),
           ],
         ),
       ),
@@ -556,22 +684,72 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
 
 /// ---------------- Fretboard Widget ----------------
 class FretboardWidget extends StatelessWidget {
+  final List<int> fretPositions;
+  final List<String> noStrumStrings;
+
+  const FretboardWidget({
+    this.fretPositions = const [],
+    this.noStrumStrings = const [],
+    Key? key,
+  }) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 200,
+      padding: EdgeInsets.all(16),
       width: double.infinity,
       decoration: BoxDecoration(
         border: Border.all(color: Colors.brown),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Center(
-        child: Text(
-          "Fretboard Display\n(To be implemented)",
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16),
-        ),
-      ),
+      child: fretPositions.isEmpty
+          ? Center(
+              child: Text(
+                "Fretboard Display\n(To be implemented)",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16),
+              ),
+            )
+          : Center(
+              child: Text(
+                "Fretboard Display\n(To be implemented)",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16),
+              ),
+            ),
+      // : Column(
+      //     children: [
+      //       Text(
+      //         "Guitar Strings (E A D G B E)",
+      //         style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+      //       ),
+      //       SizedBox(height: 10),
+      //       Row(
+      //         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      //         children: fretPositions.asMap().entries.map((entry) {
+      //           int index = entry.key;
+      //           int fret = entry.value;
+      //           return Container(
+      //             width: 40,
+      //             height: 40,
+      //             decoration: BoxDecoration(
+      //               color: fret == -1 ? Colors.red : Colors.green,
+      //               borderRadius: BorderRadius.circular(20),
+      //             ),
+      //             child: Center(
+      //               child: Text(
+      //                 fret == -1 ? "X" : fret.toString(),
+      //                 style: TextStyle(
+      //                   color: Colors.white,
+      //                   fontWeight: FontWeight.bold,
+      //                 ),
+      //               ),
+      //             ),
+      //           );
+      //         }).toList(),
+      //       ),
+      //     ],
+      //   ),
     );
   }
 }

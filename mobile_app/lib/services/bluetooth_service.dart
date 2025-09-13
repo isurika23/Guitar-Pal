@@ -15,9 +15,12 @@ class ESP32BluetoothService {
   final String _characteristicUUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
 
   // Stream controllers for state updates
-  final StreamController<bool> _connectionStateController = StreamController<bool>.broadcast();
-  final StreamController<bool> _connectingStateController = StreamController<bool>.broadcast();
-  final StreamController<String> _connectionStatusController = StreamController<String>.broadcast();
+  final StreamController<bool> _connectionStateController =
+      StreamController<bool>.broadcast();
+  final StreamController<bool> _connectingStateController =
+      StreamController<bool>.broadcast();
+  final StreamController<String> _connectionStatusController =
+      StreamController<String>.broadcast();
 
   // Getters for current state
   bool get connected => _connected;
@@ -28,7 +31,8 @@ class ESP32BluetoothService {
   // Stream getters for listening to state changes
   Stream<bool> get connectionStateStream => _connectionStateController.stream;
   Stream<bool> get connectingStateStream => _connectingStateController.stream;
-  Stream<String> get connectionStatusStream => _connectionStatusController.stream;
+  Stream<String> get connectionStatusStream =>
+      _connectionStatusController.stream;
 
   /// Initiates connection to ESP32 device via Bluetooth Low Energy (BLE)
   Future<void> connectToESP32() async {
@@ -95,9 +99,11 @@ class ESP32BluetoothService {
       List<BluetoothService> services = await device.discoverServices();
       for (BluetoothService service in services) {
         // Compare UUIDs properly (case insensitive)
-        if (service.uuid.toString().toLowerCase() == _serviceUUID.toLowerCase()) {
+        if (service.uuid.toString().toLowerCase() ==
+            _serviceUUID.toLowerCase()) {
           for (BluetoothCharacteristic char in service.characteristics) {
-            if (char.uuid.toString().toLowerCase() == _characteristicUUID.toLowerCase()) {
+            if (char.uuid.toString().toLowerCase() ==
+                _characteristicUUID.toLowerCase()) {
               _targetCharacteristic = char;
               _startSendingMessages();
               return;
@@ -123,7 +129,7 @@ class ESP32BluetoothService {
       if (_targetCharacteristic != null && _connected) {
         try {
           // Send 'Major' message to the characteristic
-          await _targetCharacteristic!.write('Major'.codeUnits);
+          await _targetCharacteristic!.write('Guitar-Pal'.codeUnits);
         } catch (e) {
           // Handle write errors
           _updateConnectionStatus('Write failed: $e');
@@ -151,7 +157,7 @@ class ESP32BluetoothService {
   Future<void> disconnect() async {
     _sendTimer?.cancel();
     _sendTimer = null;
-    
+
     await _connectedDevice?.disconnect().catchError((e) {
       print('Error disconnecting: $e');
     });
@@ -188,13 +194,13 @@ class ESP32BluetoothService {
   void dispose() {
     _sendTimer?.cancel();
     _sendTimer = null;
-    
+
     _connectedDevice?.disconnect().catchError((e) {
       print('Error disconnecting: $e');
     });
     _connectedDevice = null;
     _targetCharacteristic = null;
-    
+
     if (!_connectionStateController.isClosed) {
       _connectionStateController.close();
     }
