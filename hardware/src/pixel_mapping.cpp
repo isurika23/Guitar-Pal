@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <FastLED.h>
 #include "main.h"
 
 void convertChordPositionsToPixels(int* stringPositions, int* pixels) {
