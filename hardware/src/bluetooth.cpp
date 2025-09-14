@@ -35,7 +35,7 @@ class ChordPixelCharacteristicCallbacks : public BLECharacteristicCallbacks
 
     // Handle chord data from mobile app
     int tokens[6];
-    int tokenCount = parseCommand(value, tokens, 6);
+    int tokenCount = parseChordCommand(value, tokens, 6);
 
     if (tokenCount > 0)
     {
@@ -71,6 +71,67 @@ class ScalePixelCharacteristicCallbacks : public BLECharacteristicCallbacks
     
     // Scale calculations not implemented yet
     Serial.println("Scale feature not implemented yet");
+
+    // tokens is a nested array of 2 integer element array: string and fret
+    int scaleData[20][2]; // Array to hold up to 20 string-fret pairs
+    int scaleCount = parseScaleCommand(value, scaleData, 20);
+    Serial.print("Parsed scale count: ");
+    Serial.println(scaleCount);
+    Serial.println("Scale data:");
+    for (int i = 0; i < scaleCount; i++)
+    {
+      int guitarString = scaleData[i][0];
+      int fretPosition = scaleData[i][1];
+      int gridPosition = fretPosition * 6 + guitarString; // Convert to grid position
+
+      Serial.print("Scale position ");
+      Serial.print(i);
+      Serial.print(": String ");
+      Serial.print(guitarString);
+      Serial.print(", Fret ");
+      Serial.print(fretPosition);
+      Serial.print(" -> Grid position ");
+      Serial.println(gridPosition);
+
+      // For debugging: print the corresponding LED index
+      if (gridPosition < VALID_LEDS)
+      {
+        Serial.print("LED Index: ");
+        Serial.println(fretLEDs[gridPosition]);
+        // clearGrid();
+        // FastLED.leds()[fretLEDs[gridPosition]] = CRGB::Blue; // Light up the corresponding LED in blue
+        // FastLED.show();
+        // delay(200); // Briefly show each LED for debugging
+      }
+      else
+      {
+        Serial.println("Grid position exceeds valid LED range");
+      }
+
+      // For debugging: print the corresponding LED index
+    }
+
+    if (scaleCount > 0)
+    {
+      Serial.print("[");
+      Serial.print(millis() / 1000);
+      Serial.print("s] Received scale data: ");
+      Serial.print(value);
+      Serial.print(" - Processing ");
+      Serial.print(scaleCount);
+      Serial.println(" scale positions");
+
+      // Process scale data
+      clearGrid();
+      convertScalePositionsToPixels(scaleData, scaleCount);
+      // FastLED.show();
+    }
+    else
+    {
+      Serial.println(" - Invalid scale data format");
+    }
+
+
   }
 };
 
