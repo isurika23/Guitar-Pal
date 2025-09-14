@@ -523,19 +523,19 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
       Map<String, dynamic>? chordInfo = chordData![chordTypeKey]?[noteKey];
 
       if (chordInfo != null) {
-        // Extract chord information
+        // Extract chord information from JSON
         List<String> notes = List<String>.from(chordInfo['notes'] ?? []);
         List<int> fretNum = List<int>.from(chordInfo['fret_num'] ?? []);
         List<String> noStrum = List<String>.from(chordInfo['no_strum'] ?? []);
 
-        // Update state with chord information
+        // Update UI state with chord information
         setState(() {
           chordNotes = notes;
           fretPositions = fretNum;
           noStrumStrings = noStrum;
         });
 
-        // Create message for ESP32
+        // Create complete chord message for logging
         Map<String, dynamic> chordMessage = {
           "chord": "$selectedNote $chordType",
           "notes": notes,
@@ -543,24 +543,31 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
           "no_strum": noStrum,
         };
 
+        // Convert fret positions to string for ESP32 transmission
+        String fretPosString = fretNum.toString();
+        
+        // Log the complete chord information
         String chordJsonString = json.encode(chordMessage);
-        String fretPosString = chordMessage['fret_positions'].toString();
-        print("$chordJsonString");
-        print("Sending fret positions to ESP32: $fretPosString");
-        widget.bluetoothService.sendMessage(fretPosString);
+        print("Complete chord data: $chordJsonString");
+        print("Sending fret positions to ESP32 chord pixel characteristic: $fretPosString");
+        
+        // Send fret positions specifically to chord pixel characteristic
+        // This targets the _chordPixelCharUUID in _pixelServiceUUID service
+        widget.bluetoothService.sendChordData(fretPosString);
+        
       } else {
         print("Chord not found: $chordTypeKey -> $noteKey");
-        // Fallback message
-        String fallbackInfo = "${noteIndex.toString()} $chordType";
-        print("Sending fallback chord to ESP32: $fallbackInfo");
-        widget.bluetoothService.sendMessage(fallbackInfo);
+        // Fallback message - send error indicator to chord characteristic
+        String fallbackInfo = "[-1, -1, -1, -1, -1, -1]"; // Error pattern
+        print("Sending fallback chord pattern to ESP32: $fallbackInfo");
+        widget.bluetoothService.sendChordData(fallbackInfo);
       }
     } catch (e) {
       print('Error processing chord data: $e');
-      // Fallback to original method
-      String fallbackInfo = "${noteIndex.toString()} $chordType";
-      print("Sending fallback chord to ESP32: $fallbackInfo");
-      widget.bluetoothService.sendMessage(fallbackInfo);
+      // Fallback to error pattern on any exception
+      String errorPattern = "[-1, -1, -1, -1, -1, -1]";
+      print("Sending error pattern to ESP32: $errorPattern");
+      widget.bluetoothService.sendChordData(errorPattern);
     }
   }
 

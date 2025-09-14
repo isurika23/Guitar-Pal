@@ -7,12 +7,21 @@ class ESP32BluetoothService {
   bool _isConnecting = false;
   String _connectionStatus = 'Disconnected';
   BluetoothDevice? _connectedDevice;
-  BluetoothCharacteristic? _targetCharacteristic;
+
+  // Multiple characteristics for different purposes
+  BluetoothCharacteristic? _initCharacteristic;
+  BluetoothCharacteristic? _chordPixelCharacteristic;
+  BluetoothCharacteristic? _scalePixelCharacteristic;
+
   Timer? _sendTimer;
 
   // UUIDs for the ESP32 service and characteristic
-  final String _serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
-  final String _characteristicUUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+  final String _initServiceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+  final String _initCharUUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+
+  final String _pixelServiceUUID = "c3c50c29-d4a5-4998-b382-62dcc1845e10";
+  final String _chordPixelCharUUID = "c3c50c29-d4a5-4998-b382-62dcc1845e11";
+  final String _scalePixelCharUUID = "c3c50c29-d4a5-4998-b382-62dcc1845e12";
 
   // Stream controllers for state updates
   final StreamController<bool> _connectionStateController =
@@ -52,7 +61,7 @@ class ESP32BluetoothService {
       // Start scanning for devices advertising the specified service UUID
       await FlutterBluePlus.startScan(
         timeout: const Duration(seconds: 10),
-        withServices: [Guid(_serviceUUID)],
+        withServices: [Guid(_initServiceUUID)],
       );
 
       // Listen for scan results to find ESP32 device
@@ -97,24 +106,63 @@ class ESP32BluetoothService {
 
       // Discover services offered by the device
       List<BluetoothService> services = await device.discoverServices();
+
+      // Variables to track which characteristics we found
+      bool foundInitChar = false;
+      bool foundChordPixelChar = false;
+      bool foundScalePixelChar = false;
+
       for (BluetoothService service in services) {
-        // Compare UUIDs properly (case insensitive)
+        // Check for initialization service
         if (service.uuid.toString().toLowerCase() ==
-            _serviceUUID.toLowerCase()) {
+            _initServiceUUID.toLowerCase()) {
           for (BluetoothCharacteristic char in service.characteristics) {
             if (char.uuid.toString().toLowerCase() ==
-                _characteristicUUID.toLowerCase()) {
-              _targetCharacteristic = char;
-              _startSendingMessages();
-              return;
+                _initCharUUID.toLowerCase()) {
+              _initCharacteristic = char;
+              foundInitChar = true;
+              print('Found initialization characteristic');
+            }
+          }
+        }
+        // Check for pixel control service (for chord and scale display)
+        else if (service.uuid.toString().toLowerCase() ==
+            _pixelServiceUUID.toLowerCase()) {
+          for (BluetoothCharacteristic char in service.characteristics) {
+            // Chord pixel control characteristic
+            if (char.uuid.toString().toLowerCase() ==
+                _chordPixelCharUUID.toLowerCase()) {
+              _chordPixelCharacteristic = char;
+              foundChordPixelChar = true;
+              print('Found chord pixel characteristic');
+            }
+            // Scale pixel control characteristic
+            else if (char.uuid.toString().toLowerCase() ==
+                _scalePixelCharUUID.toLowerCase()) {
+              _scalePixelCharacteristic = char;
+              foundScalePixelChar = true;
+              print('Found scale pixel characteristic');
             }
           }
         }
       }
-      // Update status if characteristic is not found
-      _updateConnectionStatus('Characteristic not found');
-      _updateConnectionState(false);
-      _updateConnectingState(false);
+
+      // Start periodic messages if we found the init characteristic
+      if (foundInitChar) {
+        _startSendingMessages();
+      }
+
+      // Log which characteristics were found
+      print(
+        'Characteristics found - Init: $foundInitChar, Chord: $foundChordPixelChar, Scale: $foundScalePixelChar',
+      );
+
+      // Update status if no characteristics found
+      if (!foundInitChar && !foundChordPixelChar && !foundScalePixelChar) {
+        _updateConnectionStatus('No compatible characteristics found');
+        _updateConnectionState(false);
+        _updateConnectingState(false);
+      }
     } catch (e) {
       // Handle connection errors
       _updateConnectionStatus('Connection failed: $e');
@@ -123,15 +171,17 @@ class ESP32BluetoothService {
     }
   }
 
-  /// Periodically sends messages to the ESP32 device
+  /// Periodically sends messages to the ESP32 device using init characteristic
   void _startSendingMessages() {
     _sendTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-      if (_targetCharacteristic != null && _connected) {
+      if (_initCharacteristic != null && _connected) {
         try {
-          // Send 'Major' message to the characteristic
-          await _targetCharacteristic!.write('Guitar-Pal'.codeUnits);
+          // Send 'Guitar-Pal' message to the initialization characteristic
+          await _initCharacteristic!.write('Guitar-Pal'.codeUnits);
+          print('Sent periodic message to init characteristic');
         } catch (e) {
           // Handle write errors
+          print('Init characteristic write failed: $e');
           _updateConnectionStatus('Write failed: $e');
           _updateConnectionState(false);
           _updateConnectingState(false);
@@ -140,16 +190,64 @@ class ESP32BluetoothService {
     });
   }
 
-  /// Send custom message to ESP32
-  Future<void> sendMessage(String message) async {
-    if (_targetCharacteristic != null && _connected) {
+  /// Send chord fret positions to ESP32 chord pixel characteristic
+  Future<void> sendChordData(String fretPositions) async {
+    if (_chordPixelCharacteristic != null && _connected) {
       try {
-        await _targetCharacteristic!.write(message.codeUnits);
+        // Send fret position data to chord pixel characteristic
+        await _chordPixelCharacteristic!.write(fretPositions.codeUnits);
+        print('Sent chord data to chord pixel characteristic: $fretPositions');
       } catch (e) {
+        print('Chord characteristic write failed: $e');
+        _updateConnectionStatus('Chord write failed: $e');
+        // Note: Don't disconnect on write failure, just log the error
+      }
+    } else {
+      print('Chord pixel characteristic not available or not connected');
+      if (!_connected) {
+        _updateConnectionStatus('Not connected to device');
+      } else {
+        _updateConnectionStatus('Chord characteristic not found');
+      }
+    }
+  }
+
+  /// Send scale data to ESP32 scale pixel characteristic
+  Future<void> sendScaleData(String scaleData) async {
+    if (_scalePixelCharacteristic != null && _connected) {
+      try {
+        // Send scale data to scale pixel characteristic
+        await _scalePixelCharacteristic!.write(scaleData.codeUnits);
+        print('Sent scale data to scale pixel characteristic: $scaleData');
+      } catch (e) {
+        print('Scale characteristic write failed: $e');
+        _updateConnectionStatus('Scale write failed: $e');
+        // Note: Don't disconnect on write failure, just log the error
+      }
+    } else {
+      print('Scale pixel characteristic not available or not connected');
+      if (!_connected) {
+        _updateConnectionStatus('Not connected to device');
+      } else {
+        _updateConnectionStatus('Scale characteristic not found');
+      }
+    }
+  }
+
+  /// Send custom message to ESP32 (legacy method - uses init characteristic)
+  Future<void> sendMessage(String message) async {
+    if (_initCharacteristic != null && _connected) {
+      try {
+        await _initCharacteristic!.write(message.codeUnits);
+        print('Sent message to init characteristic: $message');
+      } catch (e) {
+        print('Init characteristic write failed: $e');
         _updateConnectionStatus('Write failed: $e');
         _updateConnectionState(false);
         _updateConnectingState(false);
       }
+    } else {
+      print('Init characteristic not available or not connected');
     }
   }
 
@@ -161,8 +259,13 @@ class ESP32BluetoothService {
     await _connectedDevice?.disconnect().catchError((e) {
       print('Error disconnecting: $e');
     });
+
+    // Clear all characteristics
     _connectedDevice = null;
-    _targetCharacteristic = null;
+    _initCharacteristic = null;
+    _chordPixelCharacteristic = null;
+    _scalePixelCharacteristic = null;
+
     _updateConnectionState(false);
     _updateConnectionStatus('Disconnected');
     _updateConnectingState(false);
@@ -198,8 +301,12 @@ class ESP32BluetoothService {
     _connectedDevice?.disconnect().catchError((e) {
       print('Error disconnecting: $e');
     });
+
+    // Clear all characteristics
     _connectedDevice = null;
-    _targetCharacteristic = null;
+    _initCharacteristic = null;
+    _chordPixelCharacteristic = null;
+    _scalePixelCharacteristic = null;
 
     if (!_connectionStateController.isClosed) {
       _connectionStateController.close();
