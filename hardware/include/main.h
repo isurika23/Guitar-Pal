@@ -5,10 +5,12 @@
 #include <FastLED.h>
 
 // ================== LED Setup ==================
-#define DATA_PIN 4
+#define DATA_PIN 14
 #define NUM_LEDS 64 // 8x8 grid
 #define VALID_LEDS 48
 #define MAX_PIXELS 6
+#define BL_CONNECTED_PIN 2 // GPIO pin for Bluetooth connection status
+#define BL_DISCONNECTED_PIN 4 // GPIO pin for Bluetooth disconnection status
 
 extern CRGB leds[NUM_LEDS];
 extern int fretLEDs[VALID_LEDS];

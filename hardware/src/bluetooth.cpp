@@ -68,9 +68,6 @@ class ScalePixelCharacteristicCallbacks : public BLECharacteristicCallbacks
   {
     String value = String(pCharacteristic->getValue().c_str());
     Serial.println("Scale pixel service received: " + value);
-    
-    // Scale calculations not implemented yet
-    Serial.println("Scale feature not implemented yet");
 
     // tokens is a nested array of 2 integer element array: string and fret
     int scaleData[20][2]; // Array to hold up to 20 string-fret pairs
@@ -139,6 +136,8 @@ class ScalePixelCharacteristicCallbacks : public BLECharacteristicCallbacks
 class MyServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer* pServer) override {
     Serial.println("Client connected");
+    digitalWrite(BL_CONNECTED_PIN, HIGH);
+    digitalWrite(BL_DISCONNECTED_PIN, LOW);
   }
 
   void onDisconnect(BLEServer* pServer) override {

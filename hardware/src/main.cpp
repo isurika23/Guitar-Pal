@@ -89,6 +89,10 @@ void setup()
   Serial.begin(115200);
   setGridPixeltoFrets(); // Initialize the grid with valid LED positions
   Serial.println("Testing WS2812B 8x8 LED Grid (64 LEDs)");
+  pinMode(BL_CONNECTED_PIN, OUTPUT);
+  pinMode(BL_DISCONNECTED_PIN, OUTPUT);
+  digitalWrite(BL_CONNECTED_PIN, LOW);
+  digitalWrite(BL_DISCONNECTED_PIN, HIGH);
 
   // Initialize Bluetooth
   setupBluetooth();
@@ -101,6 +105,8 @@ void loop()
   if (pServer != nullptr && !pServer->getConnectedCount()) {
     // If no clients connected, restart advertising
     clearGrid();
+    digitalWrite(BL_CONNECTED_PIN, LOW);
+    digitalWrite(BL_DISCONNECTED_PIN, HIGH);
     Serial.println("No connection detected - Restarting advertising");
     BLEDevice::startAdvertising();
   }
