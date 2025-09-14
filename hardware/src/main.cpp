@@ -97,5 +97,13 @@ void setup()
 
 void loop()
 {
+  // Check if we need to restart advertising (additional safety check)
+  if (pServer != nullptr && !pServer->getConnectedCount()) {
+    // If no clients connected, restart advertising
+    clearGrid();
+    Serial.println("No connection detected - Restarting advertising");
+    BLEDevice::startAdvertising();
+  }
+  
   delay(2000); // Wait before repeating
 }

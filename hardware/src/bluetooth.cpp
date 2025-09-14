@@ -135,6 +135,20 @@ class ScalePixelCharacteristicCallbacks : public BLECharacteristicCallbacks
   }
 };
 
+// Server callback class to handle connection events
+class MyServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer* pServer) override {
+    Serial.println("Client connected");
+  }
+
+  void onDisconnect(BLEServer* pServer) override {
+    Serial.println("Client disconnected - Restarting advertising");
+    delay(500); // Give some time for cleanup
+    pServer->startAdvertising(); // Restart advertising
+    Serial.println("BLE Advertising restarted - Ready for new connection");
+  }
+};
+
 void setupBluetooth()
 {
   Serial.begin(115200);
@@ -157,6 +171,9 @@ void setupBluetooth()
 
   // Create BLE Server
   pServer = BLEDevice::createServer();
+  
+  // Set server callbacks to handle connection events
+  pServer->setCallbacks(new MyServerCallbacks());
 
   // Create Init Service
   BLEService *pInitService = pServer->createService(INIT_SERVICE_UUID);
