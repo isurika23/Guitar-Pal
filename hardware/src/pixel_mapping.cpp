@@ -59,6 +59,7 @@ void convertChordPositionsToPixels(int *stringPositions, int *pixels)
 void convertScalePositionsToPixels(int scaleData[][2], int scaleCount)
 {
   Serial.println("Converting scale positions to pixels...");
+  int pixels[scaleCount] = {0}; // Temporary array to hold pixel indices
 
   for (int i = 0; i < scaleCount; i++)
   {
@@ -78,6 +79,8 @@ void convertScalePositionsToPixels(int scaleData[][2], int scaleCount)
     if (guitarString >= 0 && guitarString < 6)
     {
       int gridPosition = fretPosition * 6 + guitarString;
+      pixels[i] = gridPosition;
+
 
       // Make sure we don't exceed the valid LED range
       if (gridPosition < VALID_LEDS)
@@ -85,7 +88,7 @@ void convertScalePositionsToPixels(int scaleData[][2], int scaleCount)
         // clearGrid();
         leds[fretLEDs[gridPosition]] = CRGB::Purple; // Use purple for scale notes
         FastLED.show();
-        delay(200); // Briefly show each LED for debugging
+        delay(500); // Briefly show each LED for debugging
 
         Serial.print("String ");
         Serial.print(guitarString);
@@ -107,4 +110,26 @@ void convertScalePositionsToPixels(int scaleData[][2], int scaleCount)
       Serial.println(guitarString);
     }
   }
+
+  
+    Serial.print("Final scale pixel indices:");
+    for (int j = 0; j < scaleCount; j++)
+    {
+      Serial.print(pixels[j]);
+      if (j < scaleCount - 1)
+        Serial.print(", ");
+    }
+    Serial.println();
+    clearGrid();
+
+    for (int j = 0; j < scaleCount; j++)
+    {
+      int pixelIndex = pixels[scaleCount - 1 - j]; // Reverse order for display
+      if (pixelIndex >= 0 && pixelIndex < VALID_LEDS)
+      {
+        leds[fretLEDs[pixelIndex]] = CRGB::Purple; // Use purple for scale notes
+        FastLED.show();
+        delay(500); // Briefly show each LED for debugging
+      }
+    }
 }

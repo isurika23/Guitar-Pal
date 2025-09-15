@@ -10,7 +10,7 @@ int parseChordCommand(String value, int *tokens, int maxTokens)
 {
     // Initialize token count
     int tokenCount = 0;
-    Serial.print(value);
+    // Serial.print(value);
 
     // Check for empty or invalid input
     if (value.length() == 0)
@@ -74,8 +74,8 @@ int parseChordCommand(String value, int *tokens, int maxTokens)
 int parseScaleCommand(String value, int scaleData[][2], int maxPairs)
 {
     int pairCount = 0;
-    Serial.print("Parsing scale command: ");
-    Serial.println(value);
+    // Serial.print("Parsing scale command: ");
+    // Serial.println(value);
 
     // Check for empty or invalid input
     if (value.length() == 0)
