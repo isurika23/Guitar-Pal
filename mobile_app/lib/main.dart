@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'services/bluetooth_service.dart';
+import 'widgets/fret_board_widget.dart';
 
 // Entry point of the application
 void main() {
@@ -580,20 +581,28 @@ class _ScalePracticePageState extends State<ScalePracticePage> {
               },
             ),
 
-            SizedBox(height: 20),
+            // SizedBox(height: 20),
 
-            // Display selected scale and notes
-            Text(
-              "$selectedNote $scaleType Scale",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              "Notes: ${scaleNotes.join(" ")}",
-              style: TextStyle(fontSize: 18),
-            ),
+            // // Display selected scale and notes
+            // Text(
+            //   "$selectedNote $scaleType Scale",
+            //   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            // ),
+            // Text(
+            //   "Notes: ${scaleNotes.join(" ")}",
+            //   style: TextStyle(fontSize: 18),
+            // ),
 
-            // Scale position display
-            ScalePositionWidget(scalePositions: scalePositions),
+            // Use the new FretboardWidget for scales
+            FretboardWidget(
+              fretPositions: [], // Not used for scales
+              title: "Scale Fretboard",
+              isScaleMode: true,
+              scalePositions: scalePositions,
+              selectedNote: selectedNote,
+              selectedType: scaleType,
+              notes: scaleNotes,
+            ),
           ],
         ),
       ),
@@ -750,7 +759,7 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
     }
   }
 
-  @override
+   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SingleChildScrollView(
@@ -786,22 +795,27 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
               },
             ),
 
-            SizedBox(height: 20),
+            // SizedBox(height: 20),
 
-            // Display selected chord and notes
-            Text(
-              "$selectedNote $chordType",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              "Notes: ${chordNotes.join(" ")}",
-              style: TextStyle(fontSize: 18),
-            ),
+            // // Display selected chord and notes
+            // Text(
+            //   "$selectedNote $chordType",
+            //   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            // ),
+            // Text(
+            //   "Notes: ${chordNotes.join(" ")}",
+            //   style: TextStyle(fontSize: 18),
+            // ),
 
-            // Fretboard display
+            // Use the new FretboardWidget for chords
             FretboardWidget(
               fretPositions: fretPositions,
               noStrumStrings: noStrumStrings,
+              title: "Chord Fretboard",
+              isScaleMode: false,
+              selectedNote: selectedNote,
+              selectedType: chordType,
+              notes: chordNotes,
             ),
           ],
         ),
@@ -810,68 +824,68 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
   }
 }
 
-/// ---------------- Fretboard Widget ----------------
-class FretboardWidget extends StatelessWidget {
-  final List<int> fretPositions;
-  final List<String> noStrumStrings;
+// /// ---------------- Fretboard Widget ----------------
+// class FretboardWidget extends StatelessWidget {
+//   final List<int> fretPositions;
+//   final List<String> noStrumStrings;
 
-  const FretboardWidget({
-    required this.fretPositions,
-    required this.noStrumStrings,
-    Key? key,
-  }) : super(key: key);
+//   const FretboardWidget({
+//     required this.fretPositions,
+//     required this.noStrumStrings,
+//     Key? key,
+//   }) : super(key: key);
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 20),
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.green),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Fret Positions:",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 10),
-          Text(
-            fretPositions.isNotEmpty
-                ? fretPositions.toString()
-                : "No fret positions available",
-            style: TextStyle(fontSize: 14),
-          ),
-          if (noStrumStrings.isNotEmpty) ...[
-            SizedBox(height: 10),
-            Text(
-              "Don't strum: ${noStrumStrings.join(', ')}",
-              style: TextStyle(fontSize: 14, color: Colors.red),
-            ),
-          ],
-          SizedBox(height: 10),
-          Container(
-            height: 150,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Center(
-              child: Text(
-                "Fretboard Visualization\n(To be implemented)",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       margin: EdgeInsets.symmetric(vertical: 20),
+//       padding: EdgeInsets.all(16),
+//       decoration: BoxDecoration(
+//         border: Border.all(color: Colors.green),
+//         borderRadius: BorderRadius.circular(8),
+//       ),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Text(
+//             "Fret Positions:",
+//             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+//           ),
+//           SizedBox(height: 10),
+//           Text(
+//             fretPositions.isNotEmpty
+//                 ? fretPositions.toString()
+//                 : "No fret positions available",
+//             style: TextStyle(fontSize: 14),
+//           ),
+//           if (noStrumStrings.isNotEmpty) ...[
+//             SizedBox(height: 10),
+//             Text(
+//               "Don't strum: ${noStrumStrings.join(', ')}",
+//               style: TextStyle(fontSize: 14, color: Colors.red),
+//             ),
+//           ],
+//           SizedBox(height: 10),
+//           Container(
+//             height: 150,
+//             width: double.infinity,
+//             decoration: BoxDecoration(
+//               color: Colors.grey[100],
+//               borderRadius: BorderRadius.circular(4),
+//             ),
+//             child: Center(
+//               child: Text(
+//                 "Fretboard Visualization\n(To be implemented)",
+//                 textAlign: TextAlign.center,
+//                 style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+//               ),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+//}
 
 /// ---------------- Reusable Music Selection Widget ----------------
 class MusicSelectionWidget extends StatelessWidget {
