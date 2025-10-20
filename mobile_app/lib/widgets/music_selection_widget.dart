@@ -38,42 +38,61 @@ class MusicSelectionWidget extends StatelessWidget {
         SizedBox(height: 10),
 
         // Note selection buttons in a structured grid
-        GridView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 6, // 6 notes per row (2 rows for 12 notes)
-            childAspectRatio: 2, // Width to height ratio
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-          ),
-          itemCount: notes.length,
-          itemBuilder: (context, index) {
-            final note = notes[index];
-            final isSelected = selectedNote == note;
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // Calculate button width based on available space
+            final buttonWidth =
+                (constraints.maxWidth - (5 * 8)) /
+                6; // 6 buttons, 5 gaps of 8px
+            // Set minimum height to ensure text is always visible
+            final buttonHeight = buttonWidth / 2; // Maintain 2:1 ratio
+            final minHeight = 40.0; // Minimum height to show text properly
+            final finalHeight = buttonHeight < minHeight
+                ? minHeight
+                : buttonHeight;
 
-            return ElevatedButton(
-              onPressed: () {
-                onNoteChanged(note, index);
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 6, // 6 notes per row (2 rows for 12 notes)
+                childAspectRatio:
+                    buttonWidth /
+                    finalHeight, // Dynamic ratio based on minimum height
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: notes.length,
+              itemBuilder: (context, index) {
+                final note = notes[index];
+                final isSelected = selectedNote == note;
+
+                return ElevatedButton(
+                  onPressed: () {
+                    onNoteChanged(note, index);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isSelected
+                        ? Theme.of(context).primaryColor
+                        : Colors.grey[200],
+                    foregroundColor: isSelected ? Colors.white : Colors.black87,
+                    elevation: isSelected ? 4 : 1,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                  ),
+                  child: Text(
+                    note,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                );
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isSelected
-                    ? Theme.of(context).primaryColor
-                    : Colors.grey[200],
-                foregroundColor: isSelected ? Colors.white : Colors.black87,
-                elevation: isSelected ? 4 : 1,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: EdgeInsets.symmetric(vertical: 8),
-              ),
-              child: Text(
-                note,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
             );
           },
         ),
