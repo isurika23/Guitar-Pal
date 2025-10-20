@@ -206,5 +206,109 @@
       "fret_num": [-1, 2, 4, 4, 3, 2],
       "finger_pos": [-1, 1, 3, 4, 2, 1]
     }
+  },
+  "7th": {
+    "c": {
+      "notes": ["C", "E", "G", "Bb"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 3, 2, 3, 1, 0],
+      "finger_pos": [-1, 3, 2, 4, 1, -1]
+    },
+    "c_sharp": {
+      "notes": ["C#", "F", "G#", "B"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 4, 3, 4, 2, 1],
+      "finger_pos": [-1, 4, 3, 4, 2, 1]
+    },
+    "d_flat": {
+      "notes": ["Db", "F", "Ab", "B"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 4, 3, 4, 2, 1],
+      "finger_pos": [-1, 4, 3, 4, 2, 1]
+    },
+    "d": {
+      "notes": ["D", "F#", "A", "C"],
+      "no_strum": ["E_low", "A"],
+      "fret_num": [-1, -1, 0, 2, 1, 0],
+      "finger_pos": [-1, -1, -1, 2, 1, -1]
+    },
+    "d_sharp": {
+      "notes": ["D#", "G", "A#", "C#"],
+      "no_strum": ["E_low", "A"],
+      "fret_num": [-1, -1, 1, 3, 2, 1],
+      "finger_pos": [-1, -1, 1, 3, 2, 1]
+    },
+    "e_flat": {
+      "notes": ["Eb", "G", "Bb", "Db"],
+      "no_strum": ["E_low", "A"],
+      "fret_num": [-1, -1, 1, 3, 2, 1],
+      "finger_pos": [-1, -1, 1, 3, 2, 1]
+    },
+    "e": {
+      "notes": ["E", "G#", "B", "D"],
+      "no_strum": [],
+      "fret_num": [0, 2, 2, 1, 0, 2],
+      "finger_pos": [-1, 2, 3, 1, -1, 4]
+    },
+    "f": {
+      "notes": ["F", "A", "C", "Eb"],
+      "no_strum": [],
+      "fret_num": [1, 3, 3, 2, 1, 4],
+      "finger_pos": [1, 3, 4, 2, 1, 4]
+    },
+    "f_sharp": {
+      "notes": ["F#", "A#", "C#", "E"],
+      "no_strum": [],
+      "fret_num": [2, 4, 4, 3, 2, 5],
+      "finger_pos": [1, 3, 4, 2, 1, 5]
+    },
+    "g_flat": {
+      "notes": ["Gb", "A#", "Db", "E"],
+      "no_strum": [],
+      "fret_num": [2, 4, 4, 3, 2, 5],
+      "finger_pos": [1, 3, 4, 2, 1, 5]
+    },
+    "g": {
+      "notes": ["G", "B", "D", "F"],
+      "no_strum": [],
+      "fret_num": [3, 2, 0, 0, 0, 1],
+      "finger_pos": [2, 1, -1, -1, -1, 1]
+    },
+    "g_sharp": {
+      "notes": ["G#", "C", "D#", "F#"],
+      "no_strum": ["E"],
+      "fret_num": [4, 6, 5, 5, 4, 3],
+      "finger_pos": [1, 4, 3, 3, 2, 1]
+    },
+    "a_flat": {
+      "notes": ["Ab", "C", "Eb", "Gb"],
+      "no_strum": ["E_low"],
+      "fret_num": [4, 6, 5, 5, 4, 3],
+      "finger_pos": [1, 4, 3, 3, 2, 1]
+    },
+    "a": {
+      "notes": ["A", "C#", "E", "G"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 0, 2, 2, 2, 3],
+      "finger_pos": [-1, -1, 1, 2, 3, 4]
+    },
+    "a_sharp": {
+      "notes": ["A#", "D", "F", "Ab"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 1, 3, 3, 3, 4],
+      "finger_pos": [-1, 1, 2, 3, 4, 5]
+    },
+    "b_flat": {
+      "notes": ["Bb", "D", "F", "Ab"],
+      "no_strum": ["E_low", "A"],
+      "fret_num": [-1, 1, 3, 3, 3, 4],
+      "finger_pos": [-1, 1, 2, 3, 4, 5]
+    },
+    "b": {
+      "notes": ["B", "D#", "F#", "A"],
+      "no_strum": ["E_low"],
+      "fret_num": [-1, 2, 4, 4, 4, 5],
+      "finger_pos": [-1, 1, 2, 3, 4, 5]
+    }
   }
 }
