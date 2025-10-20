@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'services/bluetooth_service.dart';
 import 'widgets/scale_practice_widget.dart';
 import 'widgets/chord_practice_widget.dart';
+import 'widgets/tuner_widget.dart';
+import 'widgets/splash_screen.dart';
 
 // Entry point of the application
 void main() {
@@ -31,9 +33,22 @@ class _MyAppState extends State<MyApp> {
   late StreamSubscription<bool> _connectingStateSubscription;
   late StreamSubscription<String> _connectionStatusSubscription;
 
+  // Splash screen state
+  bool _showSplash = true;
+
   @override
   void initState() {
     super.initState();
+
+    // Show splash screen for 3 seconds
+    Timer(Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _showSplash = false;
+        });
+      }
+    });
+
     // Listen to Bluetooth service state changes with error handling
     _connectionStateSubscription = _bluetoothService.connectionStateStream
         .listen(
@@ -78,7 +93,16 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    // Show splash screen first
+    if (_showSplash) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: SplashScreen(),
+      );
+    }
+
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, result) async {
@@ -226,7 +250,7 @@ class _MyAppState extends State<MyApp> {
           },
         );
       case AppPage.tuner:
-        return Center(child: Text("Tuner Page"));
+        return TunerPage(bluetoothService: _bluetoothService);
       case AppPage.profile:
         return Center(child: Text("Profile Page"));
       case AppPage.scalePractice:
