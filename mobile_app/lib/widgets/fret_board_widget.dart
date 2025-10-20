@@ -11,6 +11,8 @@ class FretboardWidget extends StatelessWidget {
   final String? selectedNote;
   final String selectedType;
   final List<String> notes;
+  final int currentHighlightIndex;
+  final String scaleDirection;
 
   const FretboardWidget({
     required this.fretPositions,
@@ -22,6 +24,8 @@ class FretboardWidget extends StatelessWidget {
     required this.selectedNote,
     required this.selectedType,
     required this.notes,
+    this.currentHighlightIndex = -1,
+    this.scaleDirection = "Ascending",
     Key? key,
   }) : super(key: key);
 
@@ -179,6 +183,8 @@ class FretboardWidget extends StatelessWidget {
             noStrumStrings: noStrumStrings,
             isScaleMode: isScaleMode,
             scalePositions: scalePositions,
+            currentHighlightIndex: currentHighlightIndex,
+            scaleDirection: scaleDirection,
           ),
         ),
       ),
@@ -193,6 +199,8 @@ class FretboardPainter extends CustomPainter {
   final List<String> noStrumStrings;
   final bool isScaleMode;
   final List<List<int>>? scalePositions;
+  final int currentHighlightIndex;
+  final String scaleDirection;
 
   FretboardPainter({
     required this.fretPositions,
@@ -200,6 +208,8 @@ class FretboardPainter extends CustomPainter {
     required this.noStrumStrings,
     this.isScaleMode = false,
     this.scalePositions,
+    this.currentHighlightIndex = -1,
+    this.scaleDirection = "Ascending",
   });
 
   // Get color for each finger
@@ -456,6 +466,27 @@ class FretboardPainter extends CustomPainter {
     }
   }
 
+  // Get positions list based on selected direction for highlighting
+  List<List<int>> _getDirectedPositions() {
+    if (scalePositions == null || scalePositions!.isEmpty) {
+      return [];
+    }
+
+    if (scaleDirection == "Ascending") {
+      return scalePositions!;
+    } else if (scaleDirection == "Descending") {
+      return scalePositions!.reversed.toList();
+    } else {
+      // Both - ascending then descending (without repeating first/last)
+      List<List<int>> both = [...scalePositions!];
+      // Add descending part (skip the last note since it's already there, skip first since we'll loop)
+      for (int i = scalePositions!.length - 2; i > 0; i--) {
+        both.add(scalePositions![i]);
+      }
+      return both;
+    }
+  }
+
   void _drawScalePositions(
     Canvas canvas,
     Size size,
@@ -465,27 +496,135 @@ class FretboardPainter extends CustomPainter {
     double fretSpacing,
   ) {
     final scalePaint = Paint()
-      ..color = Colors.blue
+      ..color =
+          Color(0xFF2196F3) // Blue color for scale notes
       ..style = PaintingStyle.fill;
 
-    // Draw scale positions
-    for (
-      int stringIndex = 0;
-      stringIndex < scalePositions!.length && stringIndex < 6;
-      stringIndex++
-    ) {
-      final positions = scalePositions![stringIndex];
+    final rootNotePaint = Paint()
+      ..color =
+          Color(0xFFFF5722) // Orange/Red for root note
+      ..style = PaintingStyle.fill;
+
+    final highlightPaint = Paint()
+      ..color =
+          Color(0xFF4CAF50) // Green for highlighted position
+      ..style = PaintingStyle.fill;
+
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+
+    // scalePositions is a list of [stringIndex, fretNumber] pairs
+    // Example: [[1, 3], [2, 0], [2, 2], ...]
+    // stringIndex: 0-5 (0=E_low, 1=A, 2=D, 3=G, 4=B, 5=E_high)
+    // fretNumber: 0-12 (0 = open string)
+
+    if (scalePositions == null || scalePositions!.isEmpty) {
+      return;
+    }
+
+    // Get directed positions for highlighting
+    final directedPositions = _getDirectedPositions();
+
+    // Get the currently highlighted position (if any)
+    List<int>? highlightedPos;
+    if (currentHighlightIndex >= 0 &&
+        currentHighlightIndex < directedPositions.length) {
+      highlightedPos = directedPositions[currentHighlightIndex];
+    }
+
+    // Track position number (1-8 for scale degrees)
+    int positionNumber = 1;
+
+    for (List<int> position in scalePositions!) {
+      if (position.length != 2) continue;
+
+      final stringIndex = position[0]; // Which string (0-5)
+      final fret = position[1]; // Which fret (0-12)
+
+      if (stringIndex < 0 || stringIndex >= 6) continue;
+
       final x = sideMargin + (stringIndex * stringSpacing);
 
-      for (int fret in positions) {
-        if (fret > 0 && fret <= 6) {
-          final y = topMargin + ((fret - 0.5) * fretSpacing);
-          canvas.drawCircle(Offset(x, y), 8, scalePaint);
-        } else if (fret == 0) {
-          // Open string
-          canvas.drawCircle(Offset(x, topMargin - 15), 8, scalePaint);
-        }
+      // Determine which paint to use based on position state
+      Paint currentPaint;
+      double circleRadius;
+
+      // Check if this position matches the currently highlighted position in directed sequence
+      bool isHighlighted =
+          highlightedPos != null &&
+          highlightedPos[0] == stringIndex &&
+          highlightedPos[1] == fret;
+
+      if (isHighlighted) {
+        currentPaint = highlightPaint;
+        circleRadius = 18; // Larger for highlighted
+      } else if (positionNumber == 1) {
+        currentPaint = rootNotePaint;
+        circleRadius = 14; // Normal size for root note
+      } else {
+        currentPaint = scalePaint;
+        circleRadius = 14; // Normal size for other notes
       }
+
+      if (fret > 0 && fret <= 6) {
+        // Draw scale position circle
+        final y = topMargin + ((fret - 0.5) * fretSpacing);
+        canvas.drawCircle(Offset(x, y), circleRadius, currentPaint);
+
+        // Draw position number inside the circle (white text)
+        textPainter.text = TextSpan(
+          text: positionNumber.toString(),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: isHighlighted ? 16 : 14,
+            fontWeight: FontWeight.bold,
+          ),
+        );
+        textPainter.layout();
+        textPainter.paint(
+          canvas,
+          Offset(x - textPainter.width / 2, y - textPainter.height / 2),
+        );
+      } else if (fret == 0) {
+        // Open string - highlight the string and draw circle above nut
+        final openStringHighlight = Paint()
+          ..color = currentPaint.color.withOpacity(0.3)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = isHighlighted ? 8.0 : 6.0;
+
+        // Highlight a portion of the open string
+        canvas.drawLine(
+          Offset(x, topMargin - 20),
+          Offset(x, topMargin + 60),
+          openStringHighlight,
+        );
+
+        // Draw circle above nut
+        canvas.drawCircle(
+          Offset(x, topMargin - 20),
+          circleRadius,
+          currentPaint,
+        );
+
+        // Draw position number inside the circle (white text)
+        textPainter.text = TextSpan(
+          text: positionNumber.toString(),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        );
+        textPainter.layout();
+        textPainter.paint(
+          canvas,
+          Offset(
+            x - textPainter.width / 2,
+            topMargin - 20 - textPainter.height / 2,
+          ),
+        );
+      }
+
+      positionNumber++;
     }
   }
 

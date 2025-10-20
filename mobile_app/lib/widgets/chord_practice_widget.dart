@@ -62,7 +62,7 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
       setState(() {
         chordData = json.decode(jsonString);
         print("Chord data loaded successfully");
-        print(chordData);
+        // print(chordData);
       });
     } catch (e) {
       print('Error loading chord data: $e');
@@ -203,6 +203,7 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
               selectedNote: selectedNote,
               selectedType: chordType,
               notes: chordNotes,
+              currentHighlightIndex: -1, // No highlighting for chords
             ),
           ],
         ),

@@ -37,19 +37,45 @@ class MusicSelectionWidget extends StatelessWidget {
         ),
         SizedBox(height: 10),
 
-        // Note selection chips
-        Wrap(
-          spacing: 6,
-          children: notes.map((note) {
-            return ChoiceChip(
-              label: Text(note),
-              selected: selectedNote == note,
-              onSelected: (_) {
-                int index = notes.indexOf(note);
+        // Note selection buttons in a structured grid
+        GridView.builder(
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 6, // 6 notes per row (2 rows for 12 notes)
+            childAspectRatio: 2, // Width to height ratio
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+          ),
+          itemCount: notes.length,
+          itemBuilder: (context, index) {
+            final note = notes[index];
+            final isSelected = selectedNote == note;
+
+            return ElevatedButton(
+              onPressed: () {
                 onNoteChanged(note, index);
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isSelected
+                    ? Theme.of(context).primaryColor
+                    : Colors.grey[200],
+                foregroundColor: isSelected ? Colors.white : Colors.black87,
+                elevation: isSelected ? 4 : 1,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: EdgeInsets.symmetric(vertical: 8),
+              ),
+              child: Text(
+                note,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
             );
-          }).toList(),
+          },
         ),
 
         SizedBox(height: 20),
@@ -57,7 +83,10 @@ class MusicSelectionWidget extends StatelessWidget {
         // Type dropdown (Major/Minor)
         Row(
           children: [
-            Text("Type: "),
+            Text(
+              "Type: ",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
             SizedBox(width: 10),
             DropdownButton<String>(
               value: selectedType,
@@ -67,27 +96,6 @@ class MusicSelectionWidget extends StatelessWidget {
               onChanged: (val) {
                 if (val != null) {
                   onTypeChanged(val);
-                }
-              },
-            ),
-          ],
-        ),
-
-        // Display option dropdown
-        Row(
-          children: [
-            Text("Show: "),
-            SizedBox(width: 10),
-            DropdownButton<String>(
-              value: showOption,
-              items: [
-                "Finger position",
-                "Intervals",
-                "Notes",
-              ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-              onChanged: (val) {
-                if (val != null) {
-                  onShowOptionChanged(val);
                 }
               },
             ),
