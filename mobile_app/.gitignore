@@ -43,3 +43,30 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+/documents
+
+# Local configuration file
+/local.properties
+
+# Generated plugin registrant
+/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+# Generated file for Flutter plugins
+/.flutter-plugins
+/.flutter-plugins-dependencies
+
+# iOS related
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/App.framework
+**/ios/Flutter/Generated.xcconfig
+**/ios/.symlinks/
+**/ios/ServiceDefinitions.json
+**/ios/Runner.xcworkspace/xcshareddata/
+**/ios/Runner.xcworkspace/xcuserdata/
+**/ios/Runner.xcodeproj/xcshareddata/
+**/ios/Runner.xcodeproj/xcuserdata/
+**/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/
+**/ios/Runner.xcodeproj/project.xcworkspace/xcuserdata/
+**/ios/Pods/
+**/ios/Runner/GeneratedPluginRegistrant.*
