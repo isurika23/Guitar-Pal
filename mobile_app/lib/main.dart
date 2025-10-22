@@ -316,7 +316,7 @@ class HomePage extends StatelessWidget {
           children: [
             SizedBox(height: 20),
             // App logo
-            Image.asset("assets/images/logo-2287665_1280.png", height: 120),
+            Image.asset("assets/images/logo-2287665_1280_copy.png", height: 120),
             Text(
               "Welcome Isurika!",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
