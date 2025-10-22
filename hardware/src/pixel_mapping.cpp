@@ -10,31 +10,39 @@ void convertChordPositionsToPixels(int *stringPositions, int *pixels)
   {
     int fretPosition = stringPositions[string];
 
-    // Skip if no LED should be lit for this string (position 0)
+    // Handle open strings and muted strings - light up entire column
     if (fretPosition <= 0)
     {
       if (fretPosition < 0)
       {
-        Serial.print("Don't strum string: ");
-        Serial.println(string);
-        pixels[pixelCount] = string;                    // Indicate no strum for this string
-        leds[fretLEDs[pixels[pixelCount]]] = CRGB::Red; // Use red for muted strings
-        pixelCount++;
+        Serial.print("Don't strum string ");
+        Serial.print(string);
+        Serial.println(" - lighting entire column RED");
+
+        // Light up all 7 frets for this string in red
+        for (int fret = 0; fret < 7; fret++)
+        {
+          int gridPosition = fret * 6 + string;
+          leds[fretLEDs[gridPosition]] = CRGB::Red;
+        }
       }
       else if (fretPosition == 0)
       {
-        Serial.print("Open string: ");
-        Serial.println(string);
-        pixels[pixelCount] = string;                      // Indicate open string for this string
-        leds[fretLEDs[pixels[pixelCount]]] = CRGB::Green; // Use green for open strings
-        pixelCount++;
+        Serial.print("Open string ");
+        Serial.print(string);
+        Serial.println(" - lighting entire column GREEN");
+
+        // Light up all 7 frets for this string in green
+        for (int fret = 0; fret < 7; fret++)
+        {
+          int gridPosition = fret * 6 + string;
+          leds[fretLEDs[gridPosition]] = CRGB::Green;
+        }
       }
       continue;
     }
 
-    // Convert to grid position
-    // fretPosition 1 = fret 0 (open string) = LED indices 0-5
-    // fretPosition 2 = fret 1 = LED indices 6-11, etc.
+    // Convert to grid position for pressed fret
     int gridPosition = (fretPosition) * 6 + string;
 
     // Make sure we don't exceed the valid LED range
@@ -46,7 +54,7 @@ void convertChordPositionsToPixels(int *stringPositions, int *pixels)
 
       Serial.print("String ");
       Serial.print(string);
-      Serial.print(", Position ");
+      Serial.print(", Fret ");
       Serial.print(fretPosition);
       Serial.print(" -> Grid position ");
       Serial.println(gridPosition);
@@ -81,7 +89,6 @@ void convertScalePositionsToPixels(int scaleData[][2], int scaleCount)
       int gridPosition = fretPosition * 6 + guitarString;
       pixels[i] = gridPosition;
 
-
       // Make sure we don't exceed the valid LED range
       if (gridPosition < NUM_LEDS)
       {
@@ -111,25 +118,24 @@ void convertScalePositionsToPixels(int scaleData[][2], int scaleCount)
     }
   }
 
-  
-    Serial.print("Final scale pixel indices:");
-    for (int j = 0; j < scaleCount; j++)
-    {
-      Serial.print(pixels[j]);
-      if (j < scaleCount - 1)
-        Serial.print(", ");
-    }
-    Serial.println();
-    clearGrid();
+  Serial.print("Final scale pixel indices:");
+  for (int j = 0; j < scaleCount; j++)
+  {
+    Serial.print(pixels[j]);
+    if (j < scaleCount - 1)
+      Serial.print(", ");
+  }
+  Serial.println();
+  clearGrid();
 
-    for (int j = 0; j < scaleCount; j++)
+  for (int j = 0; j < scaleCount; j++)
+  {
+    int pixelIndex = pixels[scaleCount - 1 - j]; // Reverse order for display
+    if (pixelIndex >= 0 && pixelIndex < NUM_LEDS)
     {
-      int pixelIndex = pixels[scaleCount - 1 - j]; // Reverse order for display
-      if (pixelIndex >= 0 && pixelIndex < NUM_LEDS)
-      {
-        leds[fretLEDs[pixelIndex]] = CRGB::Purple; // Use purple for scale notes
-        FastLED.show();
-        delay(500); // Briefly show each LED for debugging
-      }
+      leds[fretLEDs[pixelIndex]] = CRGB::Purple; // Use purple for scale notes
+      FastLED.show();
+      delay(500); // Briefly show each LED for debugging
     }
+  }
 }
