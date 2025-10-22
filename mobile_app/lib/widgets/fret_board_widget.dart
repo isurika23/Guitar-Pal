@@ -477,10 +477,11 @@ class FretboardPainter extends CustomPainter {
     } else if (scaleDirection == "Descending") {
       return scalePositions!.reversed.toList();
     } else {
-      // Both - ascending then descending (without repeating first/last)
+      // Both - ascending then descending
+      // Play 8th note twice (once at end of ascending, once at start of descending)
       List<List<int>> both = [...scalePositions!];
-      // Add descending part (skip the last note since it's already there, skip first since we'll loop)
-      for (int i = scalePositions!.length - 2; i > 0; i--) {
+      // Add full descending scale (all notes including the last note again)
+      for (int i = scalePositions!.length - 1; i >= 0; i--) {
         both.add(scalePositions![i]);
       }
       return both;

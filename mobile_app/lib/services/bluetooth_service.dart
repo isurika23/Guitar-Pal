@@ -12,6 +12,7 @@ class ESP32BluetoothService {
   BluetoothCharacteristic? _initCharacteristic;
   BluetoothCharacteristic? _chordPixelCharacteristic;
   BluetoothCharacteristic? _scalePixelCharacteristic;
+  BluetoothCharacteristic? _clearPixelCharacteristic;
 
   Timer? _sendTimer;
 
@@ -22,6 +23,7 @@ class ESP32BluetoothService {
   final String _pixelServiceUUID = "c3c50c29-d4a5-4998-b382-62dcc1845e10";
   final String _chordPixelCharUUID = "c3c50c29-d4a5-4998-b382-62dcc1845e11";
   final String _scalePixelCharUUID = "c3c50c29-d4a5-4998-b382-62dcc1845e12";
+  final String _clearPixelCharUUID = "c3c50c29-d4a5-4998-b382-62dcc1845e13";
 
   // Stream controllers for state updates
   final StreamController<bool> _connectionStateController =
@@ -143,6 +145,12 @@ class ESP32BluetoothService {
               foundScalePixelChar = true;
               print('Found scale pixel characteristic');
             }
+            // Clear pixel control characteristic
+            else if (char.uuid.toString().toLowerCase() ==
+                _clearPixelCharUUID.toLowerCase()) {
+              _clearPixelCharacteristic = char;
+              print('Found clear pixel characteristic');
+            }
           }
         }
       }
@@ -192,7 +200,10 @@ class ESP32BluetoothService {
 
   /// Send chord fret positions and finger positions to ESP32 chord pixel characteristic
   /// Format: fret1,fret2,...,fret6|finger1,finger2,...,finger6
-  Future<void> sendChordData(String fretPositions, [String? fingerPositions]) async {
+  Future<void> sendChordData(
+    String fretPositions, [
+    String? fingerPositions,
+  ]) async {
     if (_chordPixelCharacteristic != null && _connected) {
       try {
         // Combine fret and finger data with pipe separator for efficient parsing
@@ -200,7 +211,7 @@ class ESP32BluetoothService {
         if (fingerPositions != null && fingerPositions.isNotEmpty) {
           dataToSend = '$fretPositions|$fingerPositions';
         }
-        
+
         // Send combined data to chord pixel characteristic
         await _chordPixelCharacteristic!.write(dataToSend.codeUnits);
         print('Sent chord data to chord pixel characteristic: $dataToSend');
@@ -241,6 +252,24 @@ class ESP32BluetoothService {
     }
   }
 
+  /// Clear all LED pixels on ESP32 using dedicated clear characteristic
+  /// This should be called when navigating away from chord/scale screens
+  /// or when Bluetooth connection is lost
+  Future<void> clearDisplay() async {
+    if (_clearPixelCharacteristic != null && _connected) {
+      try {
+        // Send any non-empty message to trigger clear (using "1" for simplicity)
+        await _clearPixelCharacteristic!.write('1'.codeUnits);
+        print('Sent clear command to clear pixel characteristic');
+      } catch (e) {
+        print('Clear characteristic write failed: $e');
+        // Don't update connection status for clear failures - not critical
+      }
+    } else {
+      print('Clear pixel characteristic not available or not connected');
+    }
+  }
+
   /// Send custom message to ESP32 (legacy method - uses init characteristic)
   Future<void> sendMessage(String message) async {
     if (_initCharacteristic != null && _connected) {
@@ -260,6 +289,9 @@ class ESP32BluetoothService {
 
   /// Disconnect from the current device
   Future<void> disconnect() async {
+    // Clear the LED display before disconnecting
+    await clearDisplay();
+
     _sendTimer?.cancel();
     _sendTimer = null;
 
@@ -272,6 +304,7 @@ class ESP32BluetoothService {
     _initCharacteristic = null;
     _chordPixelCharacteristic = null;
     _scalePixelCharacteristic = null;
+    _clearPixelCharacteristic = null;
 
     _updateConnectionState(false);
     _updateConnectionStatus('Disconnected');

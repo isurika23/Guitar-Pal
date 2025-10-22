@@ -10,6 +10,7 @@ BLEServer *pServer = nullptr;
 BLECharacteristic *pInitCharacteristic = nullptr;
 BLECharacteristic *pChordPixelCharacteristic = nullptr;
 BLECharacteristic *pScalePixelCharacteristic = nullptr;
+BLECharacteristic *pClearPixelCharacteristic = nullptr;
 
 class InitCharacteristicCallbacks : public BLECharacteristicCallbacks
 {
@@ -17,9 +18,10 @@ class InitCharacteristicCallbacks : public BLECharacteristicCallbacks
   {
     String value = String(pCharacteristic->getValue().c_str());
     Serial.println("Init service received: " + value);
-    
+
     // Handle initialization messages from mobile app
-    if (value == "Guitar-Pal") {
+    if (value == "Guitar-Pal")
+    {
       Serial.println("Mobile app connected and initialized");
       pCharacteristic->setValue("ESP32 Ready");
     }
@@ -69,80 +71,94 @@ class ScalePixelCharacteristicCallbacks : public BLECharacteristicCallbacks
     String value = String(pCharacteristic->getValue().c_str());
     Serial.println("Scale pixel service received: " + value);
 
-    // tokens is a nested array of 2 integer element array: string and fret
-    int scaleData[20][2]; // Array to hold up to 20 string-fret pairs
-    int scaleCount = parseScaleCommand(value, scaleData, 20);
-    Serial.print("Parsed scale count: ");
-    Serial.println(scaleCount);
-    Serial.println("Scale data:");
-    for (int i = 0; i < scaleCount; i++)
+    // Check for clear command first
+    if (value.equalsIgnoreCase("clear") || value == "[]")
     {
-      int guitarString = scaleData[i][0];
-      int fretPosition = scaleData[i][1];
-      int gridPosition = fretPosition * 6 + guitarString; // Convert to grid position
+      Serial.println("Clearing scale LEDs");
+      clearGrid();
+      FastLED.show();
+      return;
+    }
 
-      Serial.print("Scale position ");
-      Serial.print(i);
-      Serial.print(": String ");
+    // New format: Single note position "[string, fret]" sent by mobile app at BPM interval
+    // Mobile app controls timing and direction, ESP32 just displays
+
+    // Parse single note position [string, fret]
+    int scaleData[1][2]; // Single note
+    int scaleCount = parseScaleCommand(value, scaleData, 1);
+
+    if (scaleCount == 1)
+    {
+      int guitarString = scaleData[0][0];
+      int fretPosition = scaleData[0][1];
+
+      Serial.print("Lighting note: String ");
       Serial.print(guitarString);
       Serial.print(", Fret ");
-      Serial.print(fretPosition);
-      Serial.print(" -> Grid position ");
-      Serial.println(gridPosition);
+      Serial.println(fretPosition);
 
-      // For debugging: print the corresponding LED index
-      if (gridPosition < NUM_LEDS)
+      // Validate string and fret
+      if (guitarString >= 0 && guitarString < 6 && fretPosition >= 0 && fretPosition < 7)
       {
-        Serial.print("LED Index: ");
-        Serial.println(fretLEDs[gridPosition]);
-        // clearGrid();
-        // FastLED.leds()[fretLEDs[gridPosition]] = CRGB::Blue; // Light up the corresponding LED in blue
-        // FastLED.show();
-        // delay(200); // Briefly show each LED for debugging
+        int gridPosition = fretPosition * 6 + guitarString;
+
+        if (gridPosition < NUM_LEDS)
+        {
+          // Light up the single note in green (active note color)
+          leds[fretLEDs[gridPosition]] = CRGB::Green;
+          FastLED.show();
+
+          Serial.print("LED Grid position ");
+          Serial.print(gridPosition);
+          Serial.print(" -> Physical LED ");
+          Serial.println(fretLEDs[gridPosition]);
+        }
       }
       else
       {
-        Serial.println("Grid position exceeds valid LED range");
+        Serial.println("Invalid string or fret position");
       }
-
-      // For debugging: print the corresponding LED index
-    }
-
-    if (scaleCount > 0)
-    {
-      Serial.print("[");
-      Serial.print(millis() / 1000);
-      Serial.print("s] Received scale data: ");
-      Serial.print(value);
-      Serial.print(" - Processing ");
-      Serial.print(scaleCount);
-      Serial.println(" scale positions");
-
-      // Process scale data
-      clearGrid();
-      convertScalePositionsToPixels(scaleData, scaleCount);
-      // FastLED.show();
     }
     else
     {
-      Serial.println(" - Invalid scale data format");
+      Serial.println("Invalid scale data format - expected single [string, fret] pair");
     }
+  }
+};
 
+class ClearPixelCharacteristicCallbacks : public BLECharacteristicCallbacks
+{
+  void onWrite(BLECharacteristic *pCharacteristic) override
+  {
+    String value = String(pCharacteristic->getValue().c_str());
+    Serial.print("Clear pixel service received: ");
+    Serial.println(value);
 
+    // Any non-empty message to this characteristic clears the display
+    // This provides a dedicated channel for clearing LEDs
+    if (value.length() > 0)
+    {
+      Serial.println("Clearing all LEDs via dedicated clear characteristic");
+      clearGrid();
+      FastLED.show();
+    }
   }
 };
 
 // Server callback class to handle connection events
-class MyServerCallbacks : public BLEServerCallbacks {
-  void onConnect(BLEServer* pServer) override {
+class MyServerCallbacks : public BLEServerCallbacks
+{
+  void onConnect(BLEServer *pServer) override
+  {
     Serial.println("Client connected");
     digitalWrite(BL_CONNECTED_PIN, HIGH);
     digitalWrite(BL_DISCONNECTED_PIN, LOW);
   }
 
-  void onDisconnect(BLEServer* pServer) override {
+  void onDisconnect(BLEServer *pServer) override
+  {
     Serial.println("Client disconnected - Restarting advertising");
-    delay(500); // Give some time for cleanup
+    delay(500);                  // Give some time for cleanup
     pServer->startAdvertising(); // Restart advertising
     Serial.println("BLE Advertising restarted - Ready for new connection");
   }
@@ -170,13 +186,13 @@ void setupBluetooth()
 
   // Create BLE Server
   pServer = BLEDevice::createServer();
-  
+
   // Set server callbacks to handle connection events
   pServer->setCallbacks(new MyServerCallbacks());
 
   // Create Init Service
   BLEService *pInitService = pServer->createService(INIT_SERVICE_UUID);
-  
+
   // Create Init Characteristic
   pInitCharacteristic = pInitService->createCharacteristic(
       INIT_CHAR_UUID,
@@ -187,7 +203,7 @@ void setupBluetooth()
 
   // Create Pixel Service
   BLEService *pPixelService = pServer->createService(PIXEL_SERVICE_UUID);
-  
+
   // Create Chord Pixel Characteristic
   pChordPixelCharacteristic = pPixelService->createCharacteristic(
       CHORD_PIXEL_CHAR_UUID,
@@ -196,13 +212,21 @@ void setupBluetooth()
   pChordPixelCharacteristic->setCallbacks(new ChordPixelCharacteristicCallbacks());
   pChordPixelCharacteristic->setValue("Chord Pixel Ready");
 
-  // Create Scale Pixel Characteristic (for future use)
+  // Create Scale Pixel Characteristic
   pScalePixelCharacteristic = pPixelService->createCharacteristic(
       SCALE_PIXEL_CHAR_UUID,
       BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
   pScalePixelCharacteristic->addDescriptor(new BLE2902());
   pScalePixelCharacteristic->setCallbacks(new ScalePixelCharacteristicCallbacks());
   pScalePixelCharacteristic->setValue("Scale Pixel Ready");
+
+  // Create Clear Pixel Characteristic - dedicated channel for clearing LEDs
+  pClearPixelCharacteristic = pPixelService->createCharacteristic(
+      CLEAR_PIXEL_CHAR_UUID,
+      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+  pClearPixelCharacteristic->addDescriptor(new BLE2902());
+  pClearPixelCharacteristic->setCallbacks(new ClearPixelCharacteristicCallbacks());
+  pClearPixelCharacteristic->setValue("Clear Pixel Ready");
 
   // Start both services
   pInitService->start();
@@ -215,7 +239,7 @@ void setupBluetooth()
   pAdvertising->setScanResponse(true);
   pAdvertising->setMinPreferred(0x06); // Helps with iPhone compatibility
   BLEDevice::startAdvertising();
-  
+
   Serial.println("BLE Advertising Started");
   Serial.println("Init Service UUID: " + String(INIT_SERVICE_UUID));
   Serial.println("Pixel Service UUID: " + String(PIXEL_SERVICE_UUID));

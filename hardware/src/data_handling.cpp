@@ -91,7 +91,7 @@ int parseChordCommandWithFingers(String value, int *fretTokens, int *fingerToken
 
     // Find pipe separator to split fret and finger data
     int pipeIndex = value.indexOf('|');
-    
+
     if (pipeIndex == -1)
     {
         // No pipe found, fall back to parsing as fret-only data
@@ -174,7 +174,37 @@ int parseScaleCommand(String value, int scaleData[][2], int maxPairs)
         cleanValue.trim();
     }
 
-    // Parse nested arrays like [5, 5], [5, 7], [5, 9]
+    // Check if this is a simple pair format: "string, fret" (after removing outer brackets)
+    // This happens when sending a single note like [2, 3]
+    if (cleanValue.indexOf('[') == -1)
+    {
+        // Simple format: "string, fret" - parse directly as single pair
+        int commaPos = cleanValue.indexOf(',');
+        if (commaPos != -1 && pairCount < maxPairs)
+        {
+            String firstNum = cleanValue.substring(0, commaPos);
+            String secondNum = cleanValue.substring(commaPos + 1);
+            firstNum.trim();
+            secondNum.trim();
+
+            scaleData[pairCount][0] = firstNum.toInt();  // string
+            scaleData[pairCount][1] = secondNum.toInt(); // fret
+
+            Serial.print("Parsed single pair: [");
+            Serial.print(scaleData[pairCount][0]);
+            Serial.print(", ");
+            Serial.print(scaleData[pairCount][1]);
+            Serial.println("]");
+
+            pairCount++;
+        }
+
+        Serial.print("Total parsed scale pairs: ");
+        Serial.println(pairCount);
+        return pairCount;
+    }
+
+    // Parse nested arrays like [[5, 5], [5, 7], [5, 9]]
     int start = 0;
     while (start < cleanValue.length() && pairCount < maxPairs)
     {

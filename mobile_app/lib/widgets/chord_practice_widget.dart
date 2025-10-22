@@ -53,6 +53,13 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
     _loadChordData();
   }
 
+  @override
+  void dispose() {
+    // Clear the LED display when leaving the chord practice screen
+    widget.bluetoothService.clearDisplay();
+    super.dispose();
+  }
+
   // Load chord data from JSON file
   Future<void> _loadChordData() async {
     try {

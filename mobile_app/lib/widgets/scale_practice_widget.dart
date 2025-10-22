@@ -71,6 +71,8 @@ class _ScalePracticePageState extends State<ScalePracticePage> {
   void dispose() {
     metronomeTimer?.cancel();
     _audioPlayer.dispose();
+    // Clear the LED display when leaving the scale practice screen
+    widget.bluetoothService.clearDisplay();
     super.dispose();
   }
 
@@ -111,6 +113,11 @@ class _ScalePracticePageState extends State<ScalePracticePage> {
 
   // Process scale information when selection changes
   void _processScaleData() async {
+    // Stop metronome when scale changes
+    if (isPlaying) {
+      _stopMetronome();
+    }
+
     // Don't send anything if no note is selected
     if (selectedNote == null) {
       print("No scale selected yet");
@@ -153,19 +160,20 @@ class _ScalePracticePageState extends State<ScalePracticePage> {
           "positions": positions,
         };
 
-        // Convert positions to string for ESP32 transmission
-        String positionsString = positions.toString();
-
         // Log the complete scale information
         String scaleJsonString = json.encode(scaleMessage);
         print("Complete scale data: $scaleJsonString");
         print(
-          "Sending scale positions to ESP32 scale pixel characteristic: $positionsString",
+          "Scale selected: $selectedNote $scaleType with ${positions.length} positions",
         );
 
-        // Send scale positions specifically to scale pixel characteristic
-        // This targets the _scalePixelCharUUID in _pixelServiceUUID service
-        widget.bluetoothService.sendScaleData(positionsString);
+        // Clear any previous scale display on hardware
+        if (widget.bluetoothService.connected) {
+          widget.bluetoothService.sendScaleData("clear");
+          print("Cleared hardware display for new scale selection");
+        }
+
+        // Note: We don't send the full scale anymore - individual notes are sent during playback
       } else {
         print("Scale not found: $scaleTypeKey -> $noteKey");
         // Fallback message - send error indicator to scale characteristic
@@ -217,10 +225,11 @@ class _ScalePracticePageState extends State<ScalePracticePage> {
     } else if (scaleDirection == "Descending") {
       return scalePositions.reversed.toList();
     } else {
-      // Both - ascending then descending (without repeating first/last)
+      // Both - ascending then descending
+      // Play 8th note twice (once at end of ascending, once at start of descending)
       List<List<int>> both = [...scalePositions];
-      // Add descending part (skip the last note since it's already there, skip first since we'll loop)
-      for (int i = scalePositions.length - 2; i > 0; i--) {
+      // Add full descending scale (all notes including the last note again)
+      for (int i = scalePositions.length - 1; i >= 0; i--) {
         both.add(scalePositions[i]);
       }
       return both;
@@ -235,6 +244,9 @@ class _ScalePracticePageState extends State<ScalePracticePage> {
       ).showSnackBar(SnackBar(content: Text('Please select a scale first')));
       return;
     }
+
+    // Clear LEDs before starting metronome
+    _sendCurrentNoteToHardware(clear: true);
 
     setState(() {
       isPlaying = true;
@@ -281,6 +293,9 @@ class _ScalePracticePageState extends State<ScalePracticePage> {
         // Count-in complete, next beat (beat 9) will start scale playback
         // Set to -1 so that next beat will be position 0
         currentPositionIndex = -1;
+
+        // Clear hardware display before starting
+        _sendCurrentNoteToHardware(clear: true);
       }
 
       // Single setState at the end to trigger rebuild
@@ -297,10 +312,23 @@ class _ScalePracticePageState extends State<ScalePracticePage> {
       totalBeatCount++;
       currentPositionIndex++;
 
+      // Special handling for "Both" mode: clear LEDs at transition point (after 8th note of ascending)
+      if (scaleDirection == "Both" &&
+          currentPositionIndex == scalePositions.length) {
+        // We just played the 8th note (end of ascending), now clear before descending starts
+        _sendCurrentNoteToHardware(clear: true);
+        print("Both mode: Cleared LEDs after ascending, before descending");
+      }
+
       // Loop back to start when reaching the end
       if (currentPositionIndex >= directedPositions.length) {
+        // Clear LEDs before starting the next cycle
+        _sendCurrentNoteToHardware(clear: true);
         currentPositionIndex = 0;
       }
+
+      // Send current note position to hardware
+      _sendCurrentNoteToHardware();
 
       // Single setState at the end to trigger rebuild
       if (mounted) {
@@ -309,9 +337,46 @@ class _ScalePracticePageState extends State<ScalePracticePage> {
     }
   }
 
+  // Send current highlighted note position to ESP32 hardware
+  void _sendCurrentNoteToHardware({bool clear = false}) {
+    if (!widget.bluetoothService.connected) {
+      // Don't send if not connected, but don't show error - just skip silently
+      return;
+    }
+
+    if (clear) {
+      // Send clear command to turn off all scale LEDs
+      widget.bluetoothService.sendScaleData("clear");
+      print("Sent clear command to hardware");
+      return;
+    }
+
+    final directedPositions = _getDirectedPositions();
+
+    if (currentPositionIndex >= 0 &&
+        currentPositionIndex < directedPositions.length) {
+      // Get current note position [string, fret]
+      List<int> currentNote = directedPositions[currentPositionIndex];
+
+      // Format as single note position: [string, fret]
+      String noteData = currentNote.toString();
+
+      // Send to hardware via scale characteristic
+      widget.bluetoothService.sendScaleData(noteData);
+
+      print(
+        "Sent note to hardware: String ${currentNote[0]}, Fret ${currentNote[1]} -> $noteData",
+      );
+    }
+  }
+
   // Stop metronome
   void _stopMetronome() {
     metronomeTimer?.cancel();
+
+    // Clear hardware display when stopping
+    _sendCurrentNoteToHardware(clear: true);
+
     setState(() {
       isPlaying = false;
       currentPositionIndex = -1;

@@ -14,12 +14,14 @@
 #define PIXEL_SERVICE_UUID "c3c50c29-d4a5-4998-b382-62dcc1845e10"
 #define CHORD_PIXEL_CHAR_UUID "c3c50c29-d4a5-4998-b382-62dcc1845e11"
 #define SCALE_PIXEL_CHAR_UUID "c3c50c29-d4a5-4998-b382-62dcc1845e12"
+#define CLEAR_PIXEL_CHAR_UUID "c3c50c29-d4a5-4998-b382-62dcc1845e13"
 
 // Declare global BLE objects (definition goes in .cpp)
 extern BLEServer *pServer;
 extern BLECharacteristic *pInitCharacteristic;
 extern BLECharacteristic *pChordPixelCharacteristic;
 extern BLECharacteristic *pScalePixelCharacteristic;
+extern BLECharacteristic *pClearPixelCharacteristic;
 
 // Function prototypes
 void setupBluetooth();

@@ -79,11 +79,11 @@ void convertChordPositionsToPixelsWithFingers(int *fretPositions, int *fingerPos
 
   // Define distinct colors for each finger (avoiding green and red)
   CRGB fingerColors[5] = {
-    CRGB::White,    // finger 0 (no finger or open) - shouldn't be used for pressed frets
-    CRGB::Blue,     // finger 1
-    CRGB::Cyan,     // finger 2  
-    CRGB::Yellow,   // finger 3
-    CRGB(255, 165, 0) // finger 4 - Orange (RGB: 255, 165, 0)
+      CRGB::White,      // finger 0 (no finger or open) - shouldn't be used for pressed frets
+      CRGB::Blue,       // finger 1
+      CRGB::Cyan,       // finger 2
+      CRGB::Yellow,     // finger 3
+      CRGB(255, 165, 0) // finger 4 - Orange (RGB: 255, 165, 0)
   };
 
   for (int string = 0; string < 6; string++)
@@ -141,12 +141,16 @@ void convertChordPositionsToPixelsWithFingers(int *fretPositions, int *fingerPos
         Serial.print(" -> Grid position ");
         Serial.print(gridPosition);
         Serial.print(" - Color: ");
-        
+
         // Print color name for debugging
-        if (fingerPosition == 1) Serial.println("BLUE");
-        else if (fingerPosition == 2) Serial.println("CYAN");
-        else if (fingerPosition == 3) Serial.println("YELLOW");
-        else if (fingerPosition == 4) Serial.println("ORANGE");
+        if (fingerPosition == 1)
+          Serial.println("BLUE");
+        else if (fingerPosition == 2)
+          Serial.println("CYAN");
+        else if (fingerPosition == 3)
+          Serial.println("YELLOW");
+        else if (fingerPosition == 4)
+          Serial.println("ORANGE");
       }
       else
       {
