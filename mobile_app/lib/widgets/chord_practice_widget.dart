@@ -120,27 +120,29 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
           noStrumStrings = noStrum;
         });
 
-        // Create complete chord message for logging
-        Map<String, dynamic> chordMessage = {
+        // Convert fret positions to string for ESP32 transmission
+        String fretPosString = fretNum.toString();
+        String fingerPosString = fingerNum.toString();
+
+        // Log the complete chord information
+        Map<String, dynamic> chordMessageFull = {
           "chord": "$selectedNote $chordType",
           "notes": notes,
           "fret_positions": fretNum,
+          "finger_positions": fingerNum,
           "no_strum": noStrum,
         };
-
-        // Convert fret positions to string for ESP32 transmission
-        String fretPosString = fretNum.toString();
-
-        // Log the complete chord information
-        String chordJsonString = json.encode(chordMessage);
+        String chordJsonString = json.encode(chordMessageFull);
         print("Complete chord data: $chordJsonString");
-        print(
-          "Sending fret positions to ESP32 chord pixel characteristic: $fretPosString",
-        );
+        print("Fret positions array: $fretNum");
+        print("Finger positions array: $fingerNum");
+        print("Fret string to send: $fretPosString");
+        print("Finger string to send: $fingerPosString");
+        print("Combined data: $fretPosString|$fingerPosString");
 
-        // Send fret positions specifically to chord pixel characteristic
+        // Send both fret and finger positions to chord pixel characteristic
         // This targets the _chordPixelCharUUID in _pixelServiceUUID service
-        widget.bluetoothService.sendChordData(fretPosString);
+        widget.bluetoothService.sendChordData(fretPosString, fingerPosString);
       } else {
         print("Chord not found: $chordTypeKey -> $noteKey");
         // Fallback message - send error indicator to chord characteristic

@@ -71,6 +71,87 @@ int parseChordCommand(String value, int *tokens, int maxTokens)
     return tokenCount; // Return the actual token count
 }
 
+// Parse combined chord command with finger positions in O(n) time complexity
+// Format: "[fret1, fret2, ..., fret6]|[finger1, finger2, ..., finger6]"
+// fretTokens: array to store fret positions
+// fingerTokens: array to store finger positions
+// maxTokens: maximum tokens per array (should be 6 for guitar)
+// Returns: number of tokens parsed (should be 6 if successful)
+int parseChordCommandWithFingers(String value, int *fretTokens, int *fingerTokens, int maxTokens)
+{
+    Serial.print("Parsing chord command with fingers: ");
+    Serial.println(value);
+
+    // Check for empty input
+    if (value.length() == 0)
+    {
+        Serial.println(" - Empty command");
+        return 0;
+    }
+
+    // Find pipe separator to split fret and finger data
+    int pipeIndex = value.indexOf('|');
+    
+    if (pipeIndex == -1)
+    {
+        // No pipe found, fall back to parsing as fret-only data
+        Serial.println(" - No finger data found, parsing fret only");
+        int fretCount = parseChordCommand(value, fretTokens, maxTokens);
+        // Set all finger positions to -1 (no finger indication)
+        for (int i = 0; i < fretCount; i++)
+        {
+            fingerTokens[i] = -1;
+        }
+        return fretCount;
+    }
+
+    // Extract fret and finger portions (single pass through string)
+    String fretPart = value.substring(0, pipeIndex);
+    String fingerPart = value.substring(pipeIndex + 1);
+
+    fretPart.trim();
+    fingerPart.trim();
+
+    Serial.print(" - Fret part: ");
+    Serial.println(fretPart);
+    Serial.print(" - Finger part: ");
+    Serial.println(fingerPart);
+
+    // Parse both parts
+    int fretCount = parseChordCommand(fretPart, fretTokens, maxTokens);
+    int fingerCount = parseChordCommand(fingerPart, fingerTokens, maxTokens);
+
+    // Validate that both arrays have same length
+    if (fretCount != fingerCount)
+    {
+        Serial.print(" - Warning: fret count (");
+        Serial.print(fretCount);
+        Serial.print(") != finger count (");
+        Serial.print(fingerCount);
+        Serial.println(")");
+    }
+
+    Serial.print("Parsed fret positions: ");
+    for (int i = 0; i < fretCount; i++)
+    {
+        Serial.print(fretTokens[i]);
+        if (i < fretCount - 1)
+            Serial.print(", ");
+    }
+    Serial.println();
+
+    Serial.print("Parsed finger positions: ");
+    for (int i = 0; i < fingerCount; i++)
+    {
+        Serial.print(fingerTokens[i]);
+        if (i < fingerCount - 1)
+            Serial.print(", ");
+    }
+    Serial.println();
+
+    return fretCount;
+}
+
 int parseScaleCommand(String value, int scaleData[][2], int maxPairs)
 {
     int pairCount = 0;

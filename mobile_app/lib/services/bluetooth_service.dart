@@ -190,13 +190,20 @@ class ESP32BluetoothService {
     });
   }
 
-  /// Send chord fret positions to ESP32 chord pixel characteristic
-  Future<void> sendChordData(String fretPositions) async {
+  /// Send chord fret positions and finger positions to ESP32 chord pixel characteristic
+  /// Format: fret1,fret2,...,fret6|finger1,finger2,...,finger6
+  Future<void> sendChordData(String fretPositions, [String? fingerPositions]) async {
     if (_chordPixelCharacteristic != null && _connected) {
       try {
-        // Send fret position data to chord pixel characteristic
-        await _chordPixelCharacteristic!.write(fretPositions.codeUnits);
-        print('Sent chord data to chord pixel characteristic: $fretPositions');
+        // Combine fret and finger data with pipe separator for efficient parsing
+        String dataToSend = fretPositions;
+        if (fingerPositions != null && fingerPositions.isNotEmpty) {
+          dataToSend = '$fretPositions|$fingerPositions';
+        }
+        
+        // Send combined data to chord pixel characteristic
+        await _chordPixelCharacteristic!.write(dataToSend.codeUnits);
+        print('Sent chord data to chord pixel characteristic: $dataToSend');
       } catch (e) {
         print('Chord characteristic write failed: $e');
         _updateConnectionStatus('Chord write failed: $e');

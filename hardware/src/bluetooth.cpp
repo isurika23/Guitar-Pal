@@ -33,9 +33,10 @@ class ChordPixelCharacteristicCallbacks : public BLECharacteristicCallbacks
     String value = String(pCharacteristic->getValue().c_str());
     Serial.println("Chord pixel service received: " + value);
 
-    // Handle chord data from mobile app
-    int tokens[6];
-    int tokenCount = parseChordCommand(value, tokens, 6);
+    // Handle chord data from mobile app with finger positions
+    int fretTokens[6];
+    int fingerTokens[6];
+    int tokenCount = parseChordCommandWithFingers(value, fretTokens, fingerTokens, 6);
 
     if (tokenCount > 0)
     {
@@ -44,13 +45,12 @@ class ChordPixelCharacteristicCallbacks : public BLECharacteristicCallbacks
       Serial.print("s] Received chord data: ");
       Serial.print(value);
 
-      // Process chord data (expecting 6 fret positions for chord)
+      // Process chord data (expecting 6 fret positions and 6 finger positions)
       if (tokenCount == 6)
       {
-        Serial.println(" - Processing chord positions");
-        int pixels[6];
+        Serial.println(" - Processing chord positions with finger colors");
         clearGrid();
-        convertChordPositionsToPixels(tokens, pixels);
+        convertChordPositionsToPixelsWithFingers(fretTokens, fingerTokens);
         FastLED.show();
       }
       else

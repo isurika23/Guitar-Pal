@@ -64,6 +64,116 @@ void convertChordPositionsToPixels(int *stringPositions, int *pixels)
   return;
 }
 
+// Convert chord positions to pixels with finger-based color coding
+// O(n) time complexity where n = 6 strings
+// Color scheme:
+//   - Open strings (fret = 0): GREEN (entire column)
+//   - No strum (fret = -1): RED (entire column)
+//   - Finger 1: BLUE
+//   - Finger 2: CYAN
+//   - Finger 3: YELLOW
+//   - Finger 4: MAGENTA (or ORANGE)
+void convertChordPositionsToPixelsWithFingers(int *fretPositions, int *fingerPositions)
+{
+  Serial.println("Converting chord positions with finger colors...");
+
+  // Define distinct colors for each finger (avoiding green and red)
+  CRGB fingerColors[5] = {
+    CRGB::White,    // finger 0 (no finger or open) - shouldn't be used for pressed frets
+    CRGB::Blue,     // finger 1
+    CRGB::Cyan,     // finger 2  
+    CRGB::Yellow,   // finger 3
+    CRGB(255, 165, 0) // finger 4 - Orange (RGB: 255, 165, 0)
+  };
+
+  for (int string = 0; string < 6; string++)
+  {
+    int fretPosition = fretPositions[string];
+    int fingerPosition = fingerPositions[string];
+
+    // Handle open strings (fret = 0) - light up entire column GREEN
+    if (fretPosition == 0)
+    {
+      Serial.print("Open string ");
+      Serial.print(string);
+      Serial.println(" - lighting entire column GREEN");
+
+      for (int fret = 0; fret < 7; fret++)
+      {
+        int gridPosition = fret * 6 + string;
+        leds[fretLEDs[gridPosition]] = CRGB::Green;
+      }
+      continue;
+    }
+
+    // Handle no-strum strings (fret < 0) - light up entire column RED
+    if (fretPosition < 0)
+    {
+      Serial.print("Don't strum string ");
+      Serial.print(string);
+      Serial.println(" - lighting entire column RED");
+
+      for (int fret = 0; fret < 7; fret++)
+      {
+        int gridPosition = fret * 6 + string;
+        leds[fretLEDs[gridPosition]] = CRGB::Red;
+      }
+      continue;
+    }
+
+    // Handle pressed frets with finger color coding
+    int gridPosition = fretPosition * 6 + string;
+
+    // Make sure we don't exceed the valid LED range
+    if (gridPosition < NUM_LEDS)
+    {
+      // Select color based on finger position
+      CRGB color;
+      if (fingerPosition >= 1 && fingerPosition <= 4)
+      {
+        color = fingerColors[fingerPosition];
+        Serial.print("String ");
+        Serial.print(string);
+        Serial.print(", Fret ");
+        Serial.print(fretPosition);
+        Serial.print(", Finger ");
+        Serial.print(fingerPosition);
+        Serial.print(" -> Grid position ");
+        Serial.print(gridPosition);
+        Serial.print(" - Color: ");
+        
+        // Print color name for debugging
+        if (fingerPosition == 1) Serial.println("BLUE");
+        else if (fingerPosition == 2) Serial.println("CYAN");
+        else if (fingerPosition == 3) Serial.println("YELLOW");
+        else if (fingerPosition == 4) Serial.println("ORANGE");
+      }
+      else
+      {
+        // Default to white if finger position is invalid or not specified
+        color = CRGB::White;
+        Serial.print("String ");
+        Serial.print(string);
+        Serial.print(", Fret ");
+        Serial.print(fretPosition);
+        Serial.print(" (no finger info) -> Grid position ");
+        Serial.print(gridPosition);
+        Serial.println(" - Color: WHITE");
+      }
+
+      leds[fretLEDs[gridPosition]] = color;
+    }
+    else
+    {
+      Serial.print("Grid position ");
+      Serial.print(gridPosition);
+      Serial.println(" exceeds valid LED range");
+    }
+  }
+
+  Serial.println("Chord conversion complete");
+}
+
 void convertScalePositionsToPixels(int scaleData[][2], int scaleCount)
 {
   Serial.println("Converting scale positions to pixels...");
