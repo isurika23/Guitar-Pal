@@ -38,7 +38,7 @@ void convertChordPositionsToPixels(int *stringPositions, int *pixels)
     int gridPosition = (fretPosition) * 6 + string;
 
     // Make sure we don't exceed the valid LED range
-    if (gridPosition < VALID_LEDS)
+    if (gridPosition < NUM_LEDS)
     {
       pixels[pixelCount] = gridPosition;
       leds[fretLEDs[gridPosition]] = CRGB::Blue; // Use blue for normal strummed strings
@@ -83,7 +83,7 @@ void convertScalePositionsToPixels(int scaleData[][2], int scaleCount)
 
 
       // Make sure we don't exceed the valid LED range
-      if (gridPosition < VALID_LEDS)
+      if (gridPosition < NUM_LEDS)
       {
         // clearGrid();
         leds[fretLEDs[gridPosition]] = CRGB::Purple; // Use purple for scale notes
@@ -125,7 +125,7 @@ void convertScalePositionsToPixels(int scaleData[][2], int scaleCount)
     for (int j = 0; j < scaleCount; j++)
     {
       int pixelIndex = pixels[scaleCount - 1 - j]; // Reverse order for display
-      if (pixelIndex >= 0 && pixelIndex < VALID_LEDS)
+      if (pixelIndex >= 0 && pixelIndex < NUM_LEDS)
       {
         leds[fretLEDs[pixelIndex]] = CRGB::Purple; // Use purple for scale notes
         FastLED.show();

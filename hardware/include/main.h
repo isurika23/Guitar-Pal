@@ -6,21 +6,20 @@
 
 // ================== LED Setup ==================
 #define DATA_PIN 14
-#define NUM_LEDS 64 // 8x8 grid
-#define VALID_LEDS 48
+#define NUM_LEDS 42 // 7x6 LED strip (7 frets x 6 strings)
 #define MAX_PIXELS 6
-#define BL_CONNECTED_PIN 2 // GPIO pin for Bluetooth connection status
+#define BL_CONNECTED_PIN 2    // GPIO pin for Bluetooth connection status
 #define BL_DISCONNECTED_PIN 4 // GPIO pin for Bluetooth disconnection status
 
 extern CRGB leds[NUM_LEDS];
-extern int fretLEDs[VALID_LEDS];
+extern int fretLEDs[NUM_LEDS];
 extern int guitarStrings[6];
 
 // ================== Function Declarations ==================
-void setGridPixeltoFrets();
-void setGridColor(int* sequence, int count, CRGB color);
+void setLEDsToFrets();
+void setGridColor(int *sequence, int count, CRGB color);
 void clearGrid();
 
-int pixelCalculator(const int* chordNotes, int noteCount, int* pixels);
+int pixelCalculator(const int *chordNotes, int noteCount, int *pixels);
 
 #endif // MAIN_H

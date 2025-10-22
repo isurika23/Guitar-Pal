@@ -91,7 +91,7 @@ class ScalePixelCharacteristicCallbacks : public BLECharacteristicCallbacks
       Serial.println(gridPosition);
 
       // For debugging: print the corresponding LED index
-      if (gridPosition < VALID_LEDS)
+      if (gridPosition < NUM_LEDS)
       {
         Serial.print("LED Index: ");
         Serial.println(fretLEDs[gridPosition]);
