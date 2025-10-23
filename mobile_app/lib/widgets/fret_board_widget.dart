@@ -13,6 +13,7 @@ class FretboardWidget extends StatelessWidget {
   final List<String> notes;
   final int currentHighlightIndex;
   final String scaleDirection;
+  final List<List<int>>? wrongPositions; // New: list of [string, fret] pairs for wrong positions
 
   const FretboardWidget({
     required this.fretPositions,
@@ -26,6 +27,7 @@ class FretboardWidget extends StatelessWidget {
     required this.notes,
     this.currentHighlightIndex = -1,
     this.scaleDirection = "Ascending",
+    this.wrongPositions, // New parameter for wrong positions
     Key? key,
   }) : super(key: key);
 
@@ -185,6 +187,7 @@ class FretboardWidget extends StatelessWidget {
             scalePositions: scalePositions,
             currentHighlightIndex: currentHighlightIndex,
             scaleDirection: scaleDirection,
+            wrongPositions: wrongPositions, // Pass wrong positions to painter
           ),
         ),
       ),
@@ -201,6 +204,7 @@ class FretboardPainter extends CustomPainter {
   final List<List<int>>? scalePositions;
   final int currentHighlightIndex;
   final String scaleDirection;
+  final List<List<int>>? wrongPositions; // Wrong positions to highlight
 
   FretboardPainter({
     required this.fretPositions,
@@ -210,6 +214,7 @@ class FretboardPainter extends CustomPainter {
     this.scalePositions,
     this.currentHighlightIndex = -1,
     this.scaleDirection = "Ascending",
+    this.wrongPositions, // Add wrongPositions to constructor
   });
 
   // Get color for each finger
@@ -341,6 +346,17 @@ class FretboardPainter extends CustomPainter {
         openStringPaint,
         noStrumPaint,
         textPainter,
+      );
+    }
+
+    // Draw wrong positions (red circles) on top of everything
+    if (wrongPositions != null && wrongPositions!.isNotEmpty) {
+      _drawWrongPositions(
+        canvas,
+        topMargin,
+        sideMargin,
+        stringSpacing,
+        fretSpacing,
       );
     }
   }
@@ -629,6 +645,48 @@ class FretboardPainter extends CustomPainter {
     }
   }
 
+  /// Draw red circles to indicate wrong finger positions
+  /// Format: wrongPositions = [[stringNum, fretNum], [stringNum, fretNum], ...]
+  void _drawWrongPositions(
+    Canvas canvas,
+    double topMargin,
+    double sideMargin,
+    double stringSpacing,
+    double fretSpacing,
+  ) {
+    final wrongPaint = Paint()
+      ..color = Colors.red.withOpacity(0.7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0;
+
+    for (var position in wrongPositions!) {
+      if (position.length >= 2) {
+        int stringNum = position[0]; // 0-5
+        int fretNum = position[1];   // 0-6
+
+        // Calculate position on fretboard
+        final x = sideMargin + (stringNum * stringSpacing);
+        
+        if (fretNum == 0) {
+          // Wrong position on open string - draw circle above nut
+          canvas.drawCircle(
+            Offset(x, topMargin - 20),
+            18, // Slightly larger than the normal circle
+            wrongPaint,
+          );
+        } else if (fretNum >= 1 && fretNum <= 6) {
+          // Wrong position on fretted note - draw circle on fretboard
+          final y = topMargin + ((fretNum - 0.5) * fretSpacing);
+          canvas.drawCircle(
+            Offset(x, y),
+            18, // Slightly larger than the normal circle
+            wrongPaint,
+          );
+        }
+      }
+    }
+  }
+
   @override
   bool shouldRepaint(covariant FretboardPainter oldDelegate) {
     // Only repaint if the actual data has changed
@@ -636,6 +694,7 @@ class FretboardPainter extends CustomPainter {
         fingerPositions != oldDelegate.fingerPositions ||
         noStrumStrings != oldDelegate.noStrumStrings ||
         isScaleMode != oldDelegate.isScaleMode ||
-        scalePositions != oldDelegate.scalePositions;
+        scalePositions != oldDelegate.scalePositions ||
+        wrongPositions != oldDelegate.wrongPositions; // Add wrong positions to repaint check
   }
 }

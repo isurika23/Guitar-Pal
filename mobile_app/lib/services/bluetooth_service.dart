@@ -13,6 +13,7 @@ class ESP32BluetoothService {
   BluetoothCharacteristic? _chordPixelCharacteristic;
   BluetoothCharacteristic? _scalePixelCharacteristic;
   BluetoothCharacteristic? _clearPixelCharacteristic;
+  BluetoothCharacteristic? _wrongPositionCharacteristic;
 
   Timer? _sendTimer;
 
@@ -24,6 +25,7 @@ class ESP32BluetoothService {
   final String _chordPixelCharUUID = "c3c50c29-d4a5-4998-b382-62dcc1845e11";
   final String _scalePixelCharUUID = "c3c50c29-d4a5-4998-b382-62dcc1845e12";
   final String _clearPixelCharUUID = "c3c50c29-d4a5-4998-b382-62dcc1845e13";
+  final String _wrongPositionCharUUID = "c3c50c29-d4a5-4998-b382-62dcc1845e14";
 
   // Stream controllers for state updates
   final StreamController<bool> _connectionStateController =
@@ -32,6 +34,8 @@ class ESP32BluetoothService {
       StreamController<bool>.broadcast();
   final StreamController<String> _connectionStatusController =
       StreamController<String>.broadcast();
+  final StreamController<List<List<int>>> _wrongPositionsController =
+      StreamController<List<List<int>>>.broadcast();
 
   // Getters for current state
   bool get connected => _connected;
@@ -44,6 +48,8 @@ class ESP32BluetoothService {
   Stream<bool> get connectingStateStream => _connectingStateController.stream;
   Stream<String> get connectionStatusStream =>
       _connectionStatusController.stream;
+  Stream<List<List<int>>> get wrongPositionsStream =>
+      _wrongPositionsController.stream;
 
   /// Initiates connection to ESP32 device via Bluetooth Low Energy (BLE)
   Future<void> connectToESP32() async {
@@ -113,6 +119,7 @@ class ESP32BluetoothService {
       bool foundInitChar = false;
       bool foundChordPixelChar = false;
       bool foundScalePixelChar = false;
+      bool foundWrongPositionChar = false;
 
       for (BluetoothService service in services) {
         // Check for initialization service
@@ -151,6 +158,16 @@ class ESP32BluetoothService {
               _clearPixelCharacteristic = char;
               print('Found clear pixel characteristic');
             }
+            // Wrong position notification characteristic
+            else if (char.uuid.toString().toLowerCase() ==
+                _wrongPositionCharUUID.toLowerCase()) {
+              _wrongPositionCharacteristic = char;
+              foundWrongPositionChar = true;
+              print('Found wrong position characteristic');
+              
+              // Subscribe to wrong position notifications
+              await _setupWrongPositionNotifications();
+            }
           }
         }
       }
@@ -162,7 +179,7 @@ class ESP32BluetoothService {
 
       // Log which characteristics were found
       print(
-        'Characteristics found - Init: $foundInitChar, Chord: $foundChordPixelChar, Scale: $foundScalePixelChar',
+        'Characteristics found - Init: $foundInitChar, Chord: $foundChordPixelChar, Scale: $foundScalePixelChar, WrongPos: $foundWrongPositionChar',
       );
 
       // Update status if no characteristics found
@@ -177,6 +194,71 @@ class ESP32BluetoothService {
       _updateConnectionState(false);
       _updateConnectingState(false);
     }
+  }
+
+  /// Setup notifications for wrong position characteristic
+  Future<void> _setupWrongPositionNotifications() async {
+    if (_wrongPositionCharacteristic == null) return;
+
+    try {
+      // Enable notifications
+      await _wrongPositionCharacteristic!.setNotifyValue(true);
+      
+      // Listen for notifications
+      _wrongPositionCharacteristic!.lastValueStream.listen((value) {
+        if (value.isNotEmpty) {
+          String dataStr = String.fromCharCodes(value);
+          print('Received wrong positions: $dataStr');
+          
+          // Parse the wrong positions data [[string, fret], [string, fret], ...]
+          List<List<int>> wrongPositions = _parseWrongPositions(dataStr);
+          
+          // Emit to stream for UI updates
+          if (!_wrongPositionsController.isClosed) {
+            _wrongPositionsController.add(wrongPositions);
+          }
+        }
+      });
+      
+      print('Wrong position notifications enabled');
+    } catch (e) {
+      print('Failed to setup wrong position notifications: $e');
+    }
+  }
+
+  /// Parse wrong position data string into list of [string, fret] pairs
+  /// Format: "[[0, 1], [2, 3]]" or "[]"
+  List<List<int>> _parseWrongPositions(String data) {
+    List<List<int>> positions = [];
+    
+    try {
+      // Remove outer brackets and whitespace
+      String cleaned = data.trim();
+      if (cleaned == '[]' || cleaned.isEmpty) {
+        return positions; // Empty list
+      }
+      
+      // Remove outer brackets
+      if (cleaned.startsWith('[') && cleaned.endsWith(']')) {
+        cleaned = cleaned.substring(1, cleaned.length - 1);
+      }
+      
+      // Parse individual pairs
+      RegExp pairRegex = RegExp(r'\[(\d+),\s*(\d+)\]');
+      Iterable<Match> matches = pairRegex.allMatches(cleaned);
+      
+      for (Match match in matches) {
+        int stringNum = int.parse(match.group(1)!);
+        int fretNum = int.parse(match.group(2)!);
+        positions.add([stringNum, fretNum]);
+      }
+      
+      print('Parsed ${positions.length} wrong positions');
+    } catch (e) {
+      print('Error parsing wrong positions: $e');
+    }
+    
+    return positions;
   }
 
   /// Periodically sends messages to the ESP32 device using init characteristic
@@ -347,6 +429,7 @@ class ESP32BluetoothService {
     _initCharacteristic = null;
     _chordPixelCharacteristic = null;
     _scalePixelCharacteristic = null;
+    _wrongPositionCharacteristic = null;
 
     if (!_connectionStateController.isClosed) {
       _connectionStateController.close();
@@ -356,6 +439,9 @@ class ESP32BluetoothService {
     }
     if (!_connectionStatusController.isClosed) {
       _connectionStatusController.close();
+    }
+    if (!_wrongPositionsController.isClosed) {
+      _wrongPositionsController.close();
     }
   }
 }

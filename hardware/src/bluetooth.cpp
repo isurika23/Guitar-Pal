@@ -11,6 +11,7 @@ BLECharacteristic *pInitCharacteristic = nullptr;
 BLECharacteristic *pChordPixelCharacteristic = nullptr;
 BLECharacteristic *pScalePixelCharacteristic = nullptr;
 BLECharacteristic *pClearPixelCharacteristic = nullptr;
+BLECharacteristic *pWrongPositionCharacteristic = nullptr;
 
 class InitCharacteristicCallbacks : public BLECharacteristicCallbacks
 {
@@ -51,6 +52,10 @@ class ChordPixelCharacteristicCallbacks : public BLECharacteristicCallbacks
       if (tokenCount == 6)
       {
         Serial.println(" - Processing chord positions with finger colors");
+        
+        // Update expected positions for finger detection
+        updateExpectedPositions(fretTokens, fingerTokens);
+        
         clearGrid();
         convertChordPositionsToPixelsWithFingers(fretTokens, fingerTokens);
         FastLED.show();
@@ -228,6 +233,13 @@ void setupBluetooth()
   pClearPixelCharacteristic->setCallbacks(new ClearPixelCharacteristicCallbacks());
   pClearPixelCharacteristic->setValue("Clear Pixel Ready");
 
+  // Create Wrong Position Characteristic - for notifying mobile app of wrong finger positions
+  pWrongPositionCharacteristic = pPixelService->createCharacteristic(
+      WRONG_POSITION_CHAR_UUID,
+      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+  pWrongPositionCharacteristic->addDescriptor(new BLE2902());
+  pWrongPositionCharacteristic->setValue("[]"); // Initially no wrong positions
+
   // Start both services
   pInitService->start();
   pPixelService->start();
@@ -244,4 +256,47 @@ void setupBluetooth()
   Serial.println("Init Service UUID: " + String(INIT_SERVICE_UUID));
   Serial.println("Pixel Service UUID: " + String(PIXEL_SERVICE_UUID));
   Serial.println("Waiting for mobile app connection...");
+}
+
+/// Send wrong position data to mobile app via BLE notification
+/// Format: [[string, fret], [string, fret], ...] or [] if no wrong positions
+void sendWrongPositions(String wrongPosData)
+{
+  if (pWrongPositionCharacteristic != nullptr && pServer != nullptr && pServer->getConnectedCount() > 0)
+  {
+    // Only send if data has changed to reduce BLE traffic
+    static String lastSentData = "";
+    if (wrongPosData != lastSentData)
+    {
+      pWrongPositionCharacteristic->setValue(wrongPosData.c_str());
+      pWrongPositionCharacteristic->notify();
+      lastSentData = wrongPosData;
+      
+      if (wrongPosData != "[]")
+      {
+        Serial.print("Sent wrong positions to mobile app: ");
+        Serial.println(wrongPosData);
+      }
+    }
+  }
+}
+
+/// Update expected finger positions from received chord data
+/// Stores fret and finger positions in global arrays for comparison
+void updateExpectedPositions(int *fretPositions, int *fingerPositions)
+{
+  Serial.println("Updating expected finger positions...");
+  for (int i = 0; i < 6; i++)
+  {
+    expectedFretPos[i] = fretPositions[i];
+    expectedFingerPos[i] = fingerPositions[i];
+    
+    Serial.print("String ");
+    Serial.print(i);
+    Serial.print(": Fret ");
+    Serial.print(expectedFretPos[i]);
+    Serial.print(", Finger ");
+    Serial.println(expectedFingerPos[i]);
+  }
+  Serial.println("Expected positions updated");
 }

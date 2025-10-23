@@ -15,6 +15,7 @@
 #define CHORD_PIXEL_CHAR_UUID "c3c50c29-d4a5-4998-b382-62dcc1845e11"
 #define SCALE_PIXEL_CHAR_UUID "c3c50c29-d4a5-4998-b382-62dcc1845e12"
 #define CLEAR_PIXEL_CHAR_UUID "c3c50c29-d4a5-4998-b382-62dcc1845e13"
+#define WRONG_POSITION_CHAR_UUID "c3c50c29-d4a5-4998-b382-62dcc1845e14"
 
 // Declare global BLE objects (definition goes in .cpp)
 extern BLEServer *pServer;
@@ -22,8 +23,11 @@ extern BLECharacteristic *pInitCharacteristic;
 extern BLECharacteristic *pChordPixelCharacteristic;
 extern BLECharacteristic *pScalePixelCharacteristic;
 extern BLECharacteristic *pClearPixelCharacteristic;
+extern BLECharacteristic *pWrongPositionCharacteristic;
 
 // Function prototypes
 void setupBluetooth();
+void sendWrongPositions(String wrongPosData);
+void updateExpectedPositions(int *fretPositions, int *fingerPositions);
 
 #endif // BLUETOOTH_H

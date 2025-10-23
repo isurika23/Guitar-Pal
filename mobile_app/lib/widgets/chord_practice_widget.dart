@@ -31,6 +31,10 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
   // Add variable to store chord data
   Map<String, dynamic>? chordData;
 
+  // Wrong position tracking
+  List<List<int>> wrongPositions = [];
+  StreamSubscription<List<List<int>>>? _wrongPositionsSubscription;
+
   // List of musical notes for selection
   List<String> notes = [
     "C",
@@ -51,13 +55,35 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
   void initState() {
     super.initState();
     _loadChordData();
+    _setupWrongPositionListener();
   }
 
   @override
   void dispose() {
+    // Cancel wrong position subscription
+    _wrongPositionsSubscription?.cancel();
+    
     // Clear the LED display when leaving the chord practice screen
     widget.bluetoothService.clearDisplay();
     super.dispose();
+  }
+
+  /// Setup listener for wrong position notifications from ESP32
+  void _setupWrongPositionListener() {
+    _wrongPositionsSubscription = widget.bluetoothService.wrongPositionsStream.listen(
+      (positions) {
+        setState(() {
+          wrongPositions = positions;
+        });
+        
+        if (positions.isNotEmpty) {
+          print('Wrong positions detected: $positions');
+        }
+      },
+      onError: (error) {
+        print('Error in wrong positions stream: $error');
+      },
+    );
   }
 
   // Load chord data from JSON file
@@ -213,6 +239,7 @@ class _ChordPracticePageState extends State<ChordPracticePage> {
               selectedType: chordType,
               notes: chordNotes,
               currentHighlightIndex: -1, // No highlighting for chords
+              wrongPositions: wrongPositions, // Pass wrong positions from ESP32
             ),
           ],
         ),
